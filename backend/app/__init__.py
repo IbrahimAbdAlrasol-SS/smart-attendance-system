@@ -88,8 +88,16 @@ def register_blueprints(app: Flask) -> None:
     # Swagger UI
     try:
         from flask_swagger_ui import get_swaggerui_blueprint
+        from app.utils.swagger import generate_swagger_spec
+        
         SWAGGER_URL = '/api/docs'
         API_URL = '/api/swagger.json'
+        
+        # إضافة route handler للـ swagger.json
+        @app.route('/api/swagger.json')
+        def swagger_spec():
+            """Serve Swagger/OpenAPI specification."""
+            return jsonify(generate_swagger_spec())
         
         swaggerui_bp = get_swaggerui_blueprint(
             SWAGGER_URL,

@@ -4,8 +4,10 @@
 from app import db
 from app.models.base import BaseModel
 from datetime import time
-
-class WeekDay(db.Enum):
+from app.models.user import Section
+from app.models.student import StudyType
+import enum
+class WeekDay(enum.Enum):
     """Days of the week."""
     SUNDAY = 0
     MONDAY = 1

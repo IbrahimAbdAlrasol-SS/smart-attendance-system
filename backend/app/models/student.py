@@ -6,16 +6,18 @@ from app import db
 from app.models.base import BaseModel
 from app.models.user import User, UserRole, Section
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.dialects.postgresql import JSON
 import secrets
 import string
+import enum
 
-class StudyType(db.Enum):
+class StudyType(enum.Enum):
     """Study types enumeration."""
     MORNING = 'morning'      # صباحي
     EVENING = 'evening'      # مسائي
     HOSTED = 'hosted'        # استضافة
 
-class StudentStatus(db.Enum):
+class StudentStatus(enum.Enum):
     """Student status enumeration."""
     ACTIVE = 'active'        # نشط
     SUSPENDED = 'suspended'  # موقوف
