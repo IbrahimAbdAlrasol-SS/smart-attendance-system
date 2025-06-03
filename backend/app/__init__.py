@@ -1,3 +1,5 @@
+
+# backend/app/__init__.py - Updated version
 """Smart Attendance System - Application Factory."""
 import logging
 import os
@@ -35,7 +37,7 @@ def create_app(config_name: str = None) -> Flask:
     limiter.init_app(app)
     
     # Configure CORS
-    CORS(app, origins=["http://localhost:*", " https://*.vercel.app "])
+    CORS(app, origins=["http://localhost:*", "https://*.vercel.app"])
     
     # Setup logging
     setup_logging(app)
@@ -49,21 +51,54 @@ def create_app(config_name: str = None) -> Flask:
     # Setup database
     setup_database(app)
     
+    # Add CLI commands
+    register_commands(app)
+    
     return app
 
 def register_blueprints(app: Flask) -> None:
-    """Register application blueprints."""
+    """Register all application blueprints."""
     from app.api.auth import auth_bp
+    from app.api.students import students_bp
+    from app.api.rooms import rooms_bp
+    from app.api.schedules import schedules_bp
     from app.api.lectures import lectures_bp
+    from app.api.qr import qr_bp
     from app.api.attendance import attendance_bp
     from app.api.reports import reports_bp
     from app.api.bot_webhook import bot_bp
     
+    # Auth
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    
+    # Admin Management
+    app.register_blueprint(students_bp, url_prefix='/api/admin/students')
+    app.register_blueprint(rooms_bp, url_prefix='/api/admin/rooms')
+    
+    # Core Features
+    app.register_blueprint(schedules_bp, url_prefix='/api/schedules')
     app.register_blueprint(lectures_bp, url_prefix='/api/lectures')
+    app.register_blueprint(qr_bp, url_prefix='/api/qr')
     app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
     app.register_blueprint(reports_bp, url_prefix='/api/reports')
+    
+    # Bot
     app.register_blueprint(bot_bp, url_prefix='/api/bot')
+    
+    # Swagger UI
+    try:
+        from flask_swagger_ui import get_swaggerui_blueprint
+        SWAGGER_URL = '/api/docs'
+        API_URL = '/api/swagger.json'
+        
+        swaggerui_bp = get_swaggerui_blueprint(
+            SWAGGER_URL,
+            API_URL,
+            config={'app_name': "Smart Attendance System API"}
+        )
+        app.register_blueprint(swaggerui_bp, url_prefix=SWAGGER_URL)
+    except ImportError:
+        app.logger.warning("Flask-Swagger-UI not installed")
 
 def register_error_handlers(app: Flask) -> None:
     """Register error handlers."""
@@ -108,10 +143,55 @@ def setup_logging(app: Flask) -> None:
         app.logger.info('Smart Attendance System startup')
 
 def setup_database(app: Flask) -> None:
-    """Setup database connections without creating tables automatically."""
+    """Setup database connections."""
     with app.app_context():
         # Import all models to ensure they're registered
-        from app.models import user, lecture, attendance, assignment
+        from app.models import (
+            User, UserRole, Section,
+            Student, StudyType, StudentStatus,
+            Room, Schedule, WeekDay,
+            Lecture, AttendanceRecord, AttendanceSession,
+            Assignment, SubjectException
+        )
+
+def register_commands(app: Flask) -> None:
+    """Register CLI commands."""
+    import click
+    
+    @app.cli.command()
+    @click.option('--drop', is_flag=True, help='Drop existing tables')
+    def init_db(drop):
+        """Initialize the database."""
+        if drop:
+            db.drop_all()
+            click.echo('Dropped all tables.')
         
-        # Don't create tables automatically - use flask commands instead
-        pass
+        db.create_all()
+        click.echo('Created all tables.')
+        
+        # Create super admin
+        from app.models.user import User, UserRole
+        
+        super_admin = User.query.filter_by(email='super@admin.com').first()
+        if not super_admin:
+            super_admin = User(
+                email='super@admin.com',
+                name='Super Admin',
+                role=UserRole.SUPER_ADMIN
+            )
+            super_admin.set_password('super123456')
+            db.session.add(super_admin)
+            db.session.commit()
+            click.echo('Created super admin user: super@admin.com / super123456')
+    
+    @app.cli.command()
+    def seed_db():
+        """Seed database with test data."""
+        from app.services.seed_service import SeedService
+        
+        try:
+            SeedService.seed_all()
+            click.echo('Database seeded successfully!')
+        except Exception as e:
+            click.echo(f'Error seeding database: {str(e)}')
+

@@ -58,7 +58,7 @@ def init_db():
     # Create student
     student = User(
         email='student@university.edu',
-        name='???? ??? ????',
+        name='ابراهيم',
         student_id='CS2021001',
         role=UserRole.STUDENT,
         section=Section.A
@@ -82,7 +82,7 @@ def reset_db():
 
 if __name__ == '__main__':
     # Development server
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 4000))
     host = os.environ.get('HOST', '127.0.0.1')
     debug = os.environ.get('FLASK_ENV') == 'development'
     

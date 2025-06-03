@@ -1,11 +1,12 @@
-# تحديث Auth API بالتطبيق الكامل
-
-"""Authentication API endpoints - Full Implementation."""
+# backend/app/api/auth.py - Updated version
+"""Authentication API endpoints - Updated for student login."""
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token, create_refresh_token
+from app import db, limiter
+from app.models.user import User, UserRole
+from app.models.student import Student
 from app.utils.helpers import success_response, error_response
 from app.services.auth_service import AuthService
-from app.models.user import User
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -15,8 +16,9 @@ def health_check():
     return success_response(message="Auth service is running")
 
 @auth_bp.route("/login", methods=["POST"])
+@limiter.limit("5 per minute")
 def login():
-    """User login endpoint."""
+    """Regular user login (teachers, admins)."""
     try:
         data = request.get_json()
         
@@ -42,32 +44,87 @@ def login():
     except Exception as e:
         return error_response(f"Login error: {str(e)}", 500)
 
-@auth_bp.route("/register", methods=["POST"])
-def register():
-    """User registration endpoint."""
+@auth_bp.route("/student-login", methods=["POST"])
+@limiter.limit("5 per minute")
+def student_login():
+    """Student login with university ID and secret code."""
     try:
         data = request.get_json()
         
         if not data:
             return error_response("Request body must be JSON", 400)
         
-        email = data.get("email", "").strip()
-        password = data.get("password", "")
-        name = data.get("name", "").strip()
-        role = data.get("role", "STUDENT").upper()
+        university_id = data.get("university_id", "").strip().upper()
+        secret_code = data.get("secret_code", "").strip()
         
-        result, error = AuthService.register(email, password, name, role)
+        if not university_id or not secret_code:
+            return error_response("University ID and secret code are required", 400)
         
-        if error:
-            return error_response(error, 400)
+        # Find student
+        student = Student.query.filter_by(university_id=university_id).first()
+        
+        if not student:
+            return error_response("Invalid credentials", 401)
+        
+        # Verify secret code
+        if not student.verify_secret_code(secret_code):
+            return error_response("Invalid credentials", 401)
+        
+        # Check if student is active
+        if student.status != 'active' or not student.user.is_active:
+            return error_response("Account is not active", 403)
+        
+        # Create tokens
+        access_token = create_access_token(identity=student.user_id)
+        refresh_token = create_refresh_token(identity=student.user_id)
+        
+        # Update last login
+        student.user.last_login = db.func.now()
+        db.session.commit()
         
         return success_response(
-            data=result,
-            message="Registration successful"
-        ), 201
+            data={
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "student": student.to_dict(),
+                "user": student.user.to_dict()
+            },
+            message="Login successful"
+        )
         
     except Exception as e:
-        return error_response(f"Registration error: {str(e)}", 500)
+        return error_response(f"Student login error: {str(e)}", 500)
+
+@auth_bp.route("/verify-face", methods=["POST"])
+@jwt_required()
+def verify_face():
+    """Verify face recognition result from mobile app."""
+    try:
+        data = request.get_json()
+        current_user_id = get_jwt_identity()
+        
+        # Mobile app sends face verification result
+        face_verified = data.get("face_verified", False)
+        verification_timestamp = data.get("timestamp")
+        
+        if not isinstance(face_verified, bool):
+            return error_response("Invalid face verification data", 400)
+        
+        # Store verification status in session/cache
+        # In production, use Redis for this
+        # For now, we just acknowledge the verification
+        
+        return success_response(
+            data={
+                "verified": face_verified,
+                "user_id": current_user_id,
+                "timestamp": verification_timestamp
+            },
+            message="Face verification recorded"
+        )
+        
+    except Exception as e:
+        return error_response(f"Face verification error: {str(e)}", 500)
 
 @auth_bp.route("/me", methods=["GET"])
 @jwt_required()
@@ -75,45 +132,18 @@ def get_current_user():
     """Get current user profile."""
     try:
         user_id = get_jwt_identity()
-        user = AuthService.get_user_by_id(user_id)
+        user = User.query.get(user_id)
         
         if not user:
             return error_response("User not found", 404)
         
-        if not user.is_active:
-            return error_response("Account is deactivated", 403)
+        response_data = user.to_dict()
         
-        return success_response(
-            data=user.to_dict(),
-            message="User profile retrieved"
-        )
+        # Add student profile if user is student
+        if user.role == UserRole.STUDENT and hasattr(user, 'student_profile'):
+            response_data['student_profile'] = user.student_profile.to_dict()
+        
+        return success_response(data=response_data)
         
     except Exception as e:
         return error_response(f"Profile error: {str(e)}", 500)
-
-@auth_bp.route("/refresh", methods=["POST"])
-@jwt_required(refresh=True)
-def refresh():
-    """Refresh access token."""
-    try:
-        user_id = get_jwt_identity()
-        result, error = AuthService.refresh_token(user_id)
-        
-        if error:
-            return error_response(error, 401)
-        
-        return success_response(
-            data=result,
-            message="Token refreshed successfully"
-        )
-        
-    except Exception as e:
-        return error_response(f"Token refresh error: {str(e)}", 500)
-
-@auth_bp.route("/logout", methods=["POST"])
-@jwt_required()
-def logout():
-    """User logout endpoint."""
-    # In a full implementation, you would blacklist the token
-    # For now, we just return success (client should discard token)
-    return success_response(message="Logout successful")

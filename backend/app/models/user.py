@@ -4,12 +4,18 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 from app.models.base import BaseModel
 
+
+# Update backend/app/models/user.py to add Super Admin role
+from enum import Enum
+
 class UserRole(Enum):
     """User roles enumeration."""
     STUDENT = 'student'
     TEACHER = 'teacher'
     COORDINATOR = 'coordinator'
     ADMIN = 'admin'
+    SUPER_ADMIN = 'super_admin'  # المبرمج
+
 
 class Section(Enum):
     """Class sections enumeration."""

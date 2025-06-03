@@ -423,24 +423,12 @@
             }
         }
 
-        // Auth Functions
-        async function register() {
-            const name = document.getElementById('register-name').value;
-            const email = document.getElementById('register-email').value;
-            const password = document.getElementById('register-password').value;
-
-            const response = await apiCall('/auth/register', 'POST', {
-                name, email, password, role: 'student'
-            });
-
-            displayResponse('auth-response', response);
-        }
-
+        
         async function login() {
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
 
-            const response = await apiCall('/api/auth/login', 'POST', { email, password });
+            const response = await apiCall('/api/auth', 'POST', { email, password });
 
             if (response.status === 200) {
                 authToken = response.data.data.access_token;
@@ -473,7 +461,7 @@
             const startTime = document.getElementById('lecture-start').value;
             const endTime = document.getElementById('lecture-end').value;
 
-            const response = await apiCall('/lectures', 'POST', {
+            const response = await apiCall('/api/lectures', 'POST', {
                 title, room, 
                 start_time: startTime, 
                 end_time: endTime
@@ -486,7 +474,7 @@
         }
 
         async function getLectures() {
-            const response = await apiCall('/lectures', 'GET');
+            const response = await apiCall('/api/lectures', 'GET');
             displayResponse('lectures-response', response);
 
             if (response.status === 200 && response.data.data) {
