@@ -3,6 +3,15 @@ import os
 import click
 from flask.cli import with_appcontext
 from app import create_app, db
+from dotenv import load_dotenv
+load_dotenv()
+
+import click
+from flask.cli import with_appcontext
+from app import create_app, db
+"""Application entry point.""";
+import os
+
 
 app = create_app(os.getenv('FLASK_ENV', 'development'))
 

@@ -108,10 +108,10 @@ def setup_logging(app: Flask) -> None:
         app.logger.info('Smart Attendance System startup')
 
 def setup_database(app: Flask) -> None:
-    """Setup database connections and create tables if needed."""
+    """Setup database connections without creating tables automatically."""
     with app.app_context():
         # Import all models to ensure they're registered
         from app.models import user, lecture, attendance, assignment
         
-        # Create tables if they don't exist
-        db.create_all()
+        # Don't create tables automatically - use flask commands instead
+        pass

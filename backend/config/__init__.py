@@ -1,21 +1,25 @@
-"""Configuration package for the Smart Attendance System."""
+﻿"""Configuration package - Fixed Version."""
 import os
-from typing import Type
 
-from .development import DevelopmentConfig
-from .production import ProductionConfig
-from .testing import TestingConfig
-
-config_map = {
-    'development': DevelopmentConfig,
-    'production': ProductionConfig,
-    'testing': TestingConfig,
-    'default': DevelopmentConfig
-}
-
-def get_config(config_name: str = None) -> Type:
-    """Get configuration class based on environment."""
-    if config_name is None:
-        config_name = os.getenv('FLASK_ENV', 'default')
+class DevelopmentConfig:
+    """Development configuration class."""
     
-    return config_map.get(config_name, config_map['default'])
+    DEBUG = True
+    TESTING = False
+    SECRET_KEY = 'dev-secret-key'
+    
+    # SQLite فقط للبداية
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///smart_attendance.db'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ECHO = True
+    
+    # تعطيل Redis مؤقتاً
+    REDIS_URL = None
+    RATELIMIT_ENABLED = False
+    
+    # JWT بسيط
+    JWT_SECRET_KEY = 'jwt-secret'
+
+def get_config(config_name=None):
+    """Get configuration instance."""
+    return DevelopmentConfig()
