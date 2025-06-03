@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Attendance - Test Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 10px 10px 0 0;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .tab:hover {
+            transform: translateY(-2px);
+        }
+
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .panel {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn.secondary {
+            background: #6c757d;
+        }
+
+        .btn.secondary:hover {
+            background: #5a6268;
+        }
+
+        .response-box {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .status-badge.success {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-badge.error {
+            background: #dc3545;
+            color: white;
+        }
+
+        .user-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .swagger-link {
+            display: inline-block;
+            background: #85ea2d;
+            color: #173647;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+
+        .swagger-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .qr-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .qr-code {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: inline-block;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .lecture-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            border-right: 5px solid #667eea;
+        }
+
+        .lecture-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎓 نظام الحضور الذكي</h1>
+            <p>لوحة اختبار API</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('auth')">🔐 المصادقة</div>
+            <div class="tab" onclick="showTab('lectures')">📚 المحاضرات</div>
+            <div class="tab" onclick="showTab('qr')">📱 QR Codes</div>
+            <div class="tab" onclick="showTab('attendance')">✅ الحضور</div>
+            <div class="tab" onclick="showTab('reports')">📊 التقارير</div>
+        </div>
+
+        <!-- Auth Panel -->
+        <div id="auth-panel" class="panel active">
+            <h2>🔐 نظام المصادقة</h2>
+            
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <!-- Register Form -->
+                <div style="flex: 1; min-width: 300px;">
+                    <h3>تسجيل مستخدم جديد</h3>
+                    <div class="form-group">
+                        <label>الاسم:</label>
+                        <input type="text" id="register-name" placeholder="محمد أحمد">
+                    </div>
+                    <div class="form-group">
+                        <label>البريد الإلكتروني:</label>
+                        <input type="email" id="register-email" placeholder="student@university.edu">
+                    </div>
+                    <div class="form-group">
+                        <label>كلمة المرور:</label>
+                        <input type="password" id="register-password" placeholder="******">
+                    </div>
+                    <button class="btn" onclick="register()">تسجيل</button>
+                </div>
+
+                <!-- Login Form -->
+                <div style="flex: 1; min-width: 300px;">
+                    <h3>تسجيل الدخول</h3>
+                    <div class="form-group">
+                        <label>البريد الإلكتروني:</label>
+                        <input type="email" id="login-email" placeholder="student@university.edu">
+                    </div>
+                    <div class="form-group">
+                        <label>كلمة المرور:</label>
+                        <input type="password" id="login-password" placeholder="******">
+                    </div>
+                    <button class="btn" onclick="login()">دخول</button>
+                    <button class="btn secondary" onclick="getProfile()">ملفي الشخصي</button>
+                </div>
+            </div>
+
+            <div id="user-info" class="user-info" style="display: none;">
+                <h3>معلومات المستخدم الحالي:</h3>
+                <div id="user-details"></div>
+            </div>
+
+            <div class="response-box" id="auth-response"></div>
+        </div>
+
+        <!-- Lectures Panel -->
+        <div id="lectures-panel" class="panel">
+            <h2>📚 إدارة المحاضرات</h2>
+            
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 300px;">
+                    <h3>إنشاء محاضرة جديدة</h3>
+                    <div class="form-group">
+                        <label>عنوان المحاضرة:</label>
+                        <input type="text" id="lecture-title" placeholder="برمجة متقدمة">
+                    </div>
+                    <div class="form-group">
+                        <label>القاعة:</label>
+                        <input type="text" id="lecture-room" placeholder="A101">
+                    </div>
+                    <div class="form-group">
+                        <label>وقت البداية:</label>
+                        <input type="datetime-local" id="lecture-start">
+                    </div>
+                    <div class="form-group">
+                        <label>وقت النهاية:</label>
+                        <input type="datetime-local" id="lecture-end">
+                    </div>
+                    <button class="btn" onclick="createLecture()">إنشاء محاضرة</button>
+                </div>
+
+                <div style="flex: 1; min-width: 300px;">
+                    <h3>المحاضرات الحالية</h3>
+                    <button class="btn secondary" onclick="getLectures()">تحديث القائمة</button>
+                    <div id="lectures-list"></div>
+                </div>
+            </div>
+
+            <div class="response-box" id="lectures-response"></div>
+        </div>
+
+        <!-- QR Panel -->
+        <div id="qr-panel" class="panel">
+            <h2>📱 نظام QR Code</h2>
+            
+            <div class="form-group">
+                <label>معرف المحاضرة:</label>
+                <input type="number" id="qr-lecture-id" placeholder="1">
+            </div>
+            <button class="btn" onclick="generateQR()">توليد QR Code</button>
+            
+            <div class="qr-container">
+                <div id="qr-display"></div>
+            </div>
+
+            <div class="response-box" id="qr-response"></div>
+        </div>
+
+        <!-- Attendance Panel -->
+        <div id="attendance-panel" class="panel">
+            <h2>✅ تسجيل الحضور</h2>
+            
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 300px;">
+                    <h3>تسجيل حضور بـ QR</h3>
+                    <div class="form-group">
+                        <label>رمز QR:</label>
+                        <input type="text" id="attendance-qr" placeholder="QR Code">
+                    </div>
+                    <div class="form-group">
+                        <label>الموقع (Latitude):</label>
+                        <input type="number" id="attendance-lat" placeholder="33.3152" step="0.0001">
+                    </div>
+                    <div class="form-group">
+                        <label>الموقع (Longitude):</label>
+                        <input type="number" id="attendance-lng" placeholder="44.3661" step="0.0001">
+                    </div>
+                    <button class="btn" onclick="checkIn()">تسجيل حضور</button>
+                </div>
+
+                <div style="flex: 1; min-width: 300px;">
+                    <h3>سجل الحضور</h3>
+                    <button class="btn secondary" onclick="getAttendance()">عرض السجل</button>
+                    <div id="attendance-list"></div>
+                </div>
+            </div>
+
+            <div class="response-box" id="attendance-response"></div>
+        </div>
+
+        <!-- Reports Panel -->
+        <div id="reports-panel" class="panel">
+            <h2>📊 التقارير</h2>
+            
+            <div class="form-group">
+                <label>نوع التقرير:</label>
+                <select id="report-type" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px;">
+                    <option value="daily">تقرير يومي</option>
+                    <option value="weekly">تقرير أسبوعي</option>
+                    <option value="monthly">تقرير شهري</option>
+                </select>
+            </div>
+            <button class="btn" onclick="generateReport()">توليد تقرير</button>
+            <button class="btn secondary" onclick="downloadReport()">تحميل PDF</button>
+
+            <div class="response-box" id="reports-response"></div>
+        </div>
+
+        <a href="/api/docs" class="swagger-link" target="_blank">
+            📖 Swagger Documentation
+        </a>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:5000/api';
+        let authToken = localStorage.getItem('authToken');
+
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all panels
+            document.querySelectorAll('.panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected panel
+            document.getElementById(`${tabName}-panel`).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // API Helper
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
+
+            if (authToken) {
+                options.headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, options);
+                const result = await response.json();
+                return { status: response.status, data: result };
+            } catch (error) {
+                return { status: 500, data: { error: true, message: error.message } };
+            }
+        }
+
+        // Auth Functions
+        async function register() {
+            const name = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+
+            const response = await apiCall('/auth/register', 'POST', {
+                name, email, password, role: 'student'
+            });
+
+            displayResponse('auth-response', response);
+        }
+
+        async function login() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            const response = await apiCall('/api/auth/login', 'POST', { email, password });
+
+            if (response.status === 200) {
+                authToken = response.data.data.access_token;
+                localStorage.setItem('authToken', authToken);
+                
+                // Display user info
+                const userInfo = document.getElementById('user-info');
+                const userDetails = document.getElementById('user-details');
+                userInfo.style.display = 'block';
+                userDetails.innerHTML = `
+                    <p><strong>الاسم:</strong> ${response.data.data.user.name}</p>
+                    <p><strong>البريد:</strong> ${response.data.data.user.email}</p>
+                    <p><strong>الدور:</strong> ${response.data.data.user.role}</p>
+                    <p><strong>Token:</strong> ${authToken.substring(0, 20)}...</p>
+                `;
+            }
+
+            displayResponse('auth-response', response);
+        }
+
+        async function getProfile() {
+            const response = await apiCall('/auth/me', 'GET');
+            displayResponse('auth-response', response);
+        }
+
+        // Lectures Functions
+        async function createLecture() {
+            const title = document.getElementById('lecture-title').value;
+            const room = document.getElementById('lecture-room').value;
+            const startTime = document.getElementById('lecture-start').value;
+            const endTime = document.getElementById('lecture-end').value;
+
+            const response = await apiCall('/lectures', 'POST', {
+                title, room, 
+                start_time: startTime, 
+                end_time: endTime
+            });
+
+            displayResponse('lectures-response', response);
+            if (response.status === 201) {
+                getLectures();
+            }
+        }
+
+        async function getLectures() {
+            const response = await apiCall('/lectures', 'GET');
+            displayResponse('lectures-response', response);
+
+            if (response.status === 200 && response.data.data) {
+                const lecturesList = document.getElementById('lectures-list');
+                lecturesList.innerHTML = response.data.data.map(lecture => `
+                    <div class="lecture-card">
+                        <h3>${lecture.title}</h3>
+                        <p>القاعة: ${lecture.room}</p>
+                        <p>الوقت: ${new Date(lecture.start_time).toLocaleString('ar')}</p>
+                        <button class="btn" onclick="generateQRForLecture(${lecture.id})">توليد QR</button>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // QR Functions
+        async function generateQR() {
+            const lectureId = document.getElementById('qr-lecture-id').value;
+            const response = await apiCall(`/lectures/${lectureId}/qr`, 'POST');
+            
+            displayResponse('qr-response', response);
+
+            if (response.status === 200) {
+                const qrDisplay = document.getElementById('qr-display');
+                qrDisplay.innerHTML = `
+                    <div class="qr-code">
+                        <img src="${response.data.data.qr_image}" alt="QR Code">
+                        <p>صالح لمدة: ${response.data.data.expires_in} ثانية</p>
+                        <p>الرمز: ${response.data.data.qr_code}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function generateQRForLecture(lectureId) {
+            document.getElementById('qr-lecture-id').value = lectureId;
+            showTab('qr');
+            generateQR();
+        }
+
+        // Attendance Functions
+        async function checkIn() {
+            const qrCode = document.getElementById('attendance-qr').value;
+            const latitude = parseFloat(document.getElementById('attendance-lat').value);
+            const longitude = parseFloat(document.getElementById('attendance-lng').value);
+
+            const response = await apiCall('/attendance/checkin', 'POST', {
+                qr_code: qrCode,
+                location: { latitude, longitude }
+            });
+
+            displayResponse('attendance-response', response);
+        }
+
+        async function getAttendance() {
+            const response = await apiCall('/attendance/my-records', 'GET');
+            displayResponse('attendance-response', response);
+        }
+
+        // Reports Functions
+        async function generateReport() {
+            const reportType = document.getElementById('report-type').value;
+            const response = await apiCall(`/reports/${reportType}`, 'GET');
+            displayResponse('reports-response', response);
+        }
+
+        async function downloadReport() {
+            alert('تحميل التقرير كـ PDF - قيد التطوير');
+        }
+
+        // Display Response
+        function displayResponse(elementId, response) {
+            const element = document.getElementById(elementId);
+            const statusBadge = response.status >= 200 && response.status < 300 ? 
+                '<span class="status-badge success">نجح</span>' : 
+                '<span class="status-badge error">فشل</span>';
+
+            element.innerHTML = `
+                ${statusBadge}
+                <strong>Status:</strong> ${response.status}
+                <strong>Response:</strong>
+                ${JSON.stringify(response.data, null, 2)}
+            `;
+        }
+
+        // Load sample data on page load
+        window.onload = function() {
+            // Set sample data
+            document.getElementById('login-email').value = 'student@university.edu';
+            document.getElementById('login-password').value = 'student123';
+            document.getElementById('attendance-lat').value = '33.3152';
+            document.getElementById('attendance-lng').value = '44.3661';
+        };
+    </script>
+</body>
+</html>
