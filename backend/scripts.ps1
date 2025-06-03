@@ -24,18 +24,18 @@ function Install-DevDeps {
 }
 
 function Setup-Complete {
-    Write-Host "?? Starting complete setup..." -ForegroundColor Yellow
+    Write-Host "🚀 Starting complete setup..." -ForegroundColor Yellow
     Install-DevDeps
     Docker-Up
     Start-Sleep -Seconds 8
     Database-Setup
-    Write-Host "? Complete setup finished!" -ForegroundColor Green
+    Write-Host "✅ Complete setup finished!" -ForegroundColor Green
 }
 
 function Docker-Up {
-    Write-Host "?? Starting Docker containers..." -ForegroundColor Blue
+    Write-Host "🐳 Starting Docker containers..." -ForegroundColor Blue
     docker-compose up -d postgres redis
-    Write-Host " Waiting for PostgreSQL to be ready..." -ForegroundColor Yellow
+    Write-Host "⏳ Waiting for PostgreSQL to be ready..." -ForegroundColor Yellow
     Start-Sleep -Seconds 5
 }
 
@@ -44,7 +44,7 @@ function Docker-Down {
 }
 
 function Database-Setup {
-    Write-Host " Setting up database..." -ForegroundColor Blue
+    Write-Host "🗄️ Setting up database..." -ForegroundColor Blue
     flask create-db
     flask init-db
 }
@@ -71,7 +71,7 @@ function Clean-Files {
 }
 
 # Main script logic
-switch (\[0]) {
+switch ($args[0]) {
     "help" { Show-Help }
     "install" { Install-Deps }
     "dev-install" { Install-DevDeps }
@@ -83,7 +83,7 @@ switch (\[0]) {
     "run" { Run-Server }
     "test" { Run-Tests }
     "clean" { Clean-Files }
-    default {
+    default { 
         Write-Host "Unknown command. Use '.\scripts.ps1 help' for available commands." -ForegroundColor Red
         Show-Help
     }
