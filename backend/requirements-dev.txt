@@ -1,5 +1,4 @@
 # Include production requirements
--r requirements.txt
 
 # Testing
 pytest==8.2.1
@@ -16,7 +15,7 @@ mypy==1.9.0
 
 # Debugging
 flask-debugtoolbar==0.15.1
-pdb-attach==3.2.0
+pdb-attach==3.0.1
 
 # API Documentation
 flask-swagger-ui==4.11.1
@@ -24,4 +23,4 @@ apispec==6.6.0
 apispec-webframeworks==1.0.0
 
 # Database Tools
-flask-shell-ipython==1.4.0
+flask-shell-ipython==0.5.3

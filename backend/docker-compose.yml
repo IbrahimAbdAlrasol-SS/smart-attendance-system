@@ -1,3 +1,4 @@
+# إزالة هذا السطر
 version: '3.8' 
 
 services: 
@@ -10,7 +11,7 @@ services:
       POSTGRES_PASSWORD: password 
       PGDATA: /var/lib/postgresql/data/pgdata 
     ports: 
-      - "5432:5432" 
+      - "5433:5432"  # تغيير المنفذ الخارجي من 5432 إلى 5433
     volumes: 
       - postgres_data:/var/lib/postgresql/data 
     networks: 
@@ -20,14 +21,14 @@ services:
     image: redis:7-alpine 
     container_name: smart_attendance_redis 
     ports: 
-      - "6379:6379" 
+      - "6380:6379"  # تغيير المنفذ الخارجي من 6379 إلى 6380
     volumes: 
       - redis_data:/data 
     networks: 
       - smart_attendance_network 
 
   adminer: 
-    image: adminer:latest 
+    image: adminer:4.8.1  # تحديد إصدار بدلاً من latest
     container_name: smart_attendance_adminer 
     ports: 
       - "8080:8080" 
@@ -42,4 +43,5 @@ volumes:
 
 networks: 
   smart_attendance_network: 
-    driver: bridge 
+    driver: bridge
+# باقي الملف
