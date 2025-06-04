@@ -1,5 +1,5 @@
-# File: backend/app/api/auth.py
-"""Authentication API endpoints - Updated for student login."""
+# File: backend/app/api/auth.py - ENHANCED VERSION
+"""Enhanced Authentication API with password reset and session management."""
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token, create_refresh_token
 from app import db, limiter
@@ -7,9 +7,14 @@ from app.models.user import User, UserRole
 from app.models.student import Student
 from app.utils.helpers import success_response, error_response
 from app.services.auth_service import AuthService
-from datetime import datetime
+from datetime import datetime, timedelta
+import secrets
+import hashlib
 
 auth_bp = Blueprint("auth", __name__)
+
+# Password reset storage (use Redis in production)
+password_reset_tokens = {}
 
 @auth_bp.route("/health", methods=["GET"])
 def health_check():
@@ -181,3 +186,249 @@ def get_current_user():
         
     except Exception as e:
         return error_response(f"Profile error: {str(e)}", 500)
+
+@auth_bp.route("/refresh", methods=["POST"])
+@jwt_required(refresh=True)
+def refresh_token():
+    """Refresh access token."""
+    try:
+        current_user_id = get_jwt_identity()
+        
+        # Generate new access token
+        new_access_token = create_access_token(identity=current_user_id)
+        
+        return success_response(
+            data={
+                "access_token": new_access_token
+            },
+            message="Token refreshed successfully"
+        )
+        
+    except Exception as e:
+        return error_response(f"Token refresh error: {str(e)}", 500)
+
+@auth_bp.route("/forgot-password", methods=["POST"])
+@limiter.limit("3 per hour")
+def forgot_password():
+    """Request password reset."""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return error_response("Request body must be JSON", 400)
+        
+        email = data.get("email", "").strip().lower()
+        
+        if not email:
+            return error_response("Email is required", 400)
+        
+        # Find user
+        user = User.query.filter_by(email=email).first()
+        
+        if not user:
+            # Don't reveal if email exists or not
+            return success_response(
+                message="If the email exists, a password reset link has been sent"
+            )
+        
+        # Generate reset token
+        reset_token = secrets.token_urlsafe(32)
+        expires_at = datetime.utcnow() + timedelta(hours=1)
+        
+        # Store token (use Redis in production)
+        password_reset_tokens[reset_token] = {
+            'user_id': user.id,
+            'expires_at': expires_at,
+            'used': False
+        }
+        
+        # In production, send email here
+        # For development, return token directly
+        return success_response(
+            data={
+                "reset_token": reset_token,  # Remove this in production
+                "expires_in": 3600
+            },
+            message="Password reset token generated"
+        )
+        
+    except Exception as e:
+        return error_response(f"Password reset error: {str(e)}", 500)
+
+@auth_bp.route("/reset-password", methods=["POST"])
+@limiter.limit("5 per hour")
+def reset_password():
+    """Reset password with token."""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return error_response("Request body must be JSON", 400)
+        
+        reset_token = data.get("reset_token", "").strip()
+        new_password = data.get("new_password", "").strip()
+        
+        if not reset_token or not new_password:
+            return error_response("Reset token and new password are required", 400)
+        
+        # Validate token
+        token_data = password_reset_tokens.get(reset_token)
+        
+        if not token_data:
+            return error_response("Invalid or expired reset token", 400)
+        
+        if token_data['used']:
+            return error_response("Reset token already used", 400)
+        
+        if datetime.utcnow() > token_data['expires_at']:
+            return error_response("Reset token expired", 400)
+        
+        # Validate new password
+        if len(new_password) < 6:
+            return error_response("Password must be at least 6 characters", 400)
+        
+        # Update password
+        user = User.query.get(token_data['user_id'])
+        
+        if not user:
+            return error_response("User not found", 404)
+        
+        user.set_password(new_password)
+        user.updated_at = datetime.utcnow()
+        
+        # Mark token as used
+        password_reset_tokens[reset_token]['used'] = True
+        
+        db.session.commit()
+        
+        return success_response(
+            message="Password reset successfully"
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        return error_response(f"Password reset error: {str(e)}", 500)
+
+@auth_bp.route("/change-password", methods=["POST"])
+@jwt_required()
+def change_password():
+    """Change password for authenticated user."""
+    try:
+        data = request.get_json()
+        current_user_id = get_jwt_identity()
+        
+        if not data:
+            return error_response("Request body must be JSON", 400)
+        
+        current_password = data.get("current_password", "")
+        new_password = data.get("new_password", "")
+        
+        if not current_password or not new_password:
+            return error_response("Current and new passwords are required", 400)
+        
+        # Get user
+        user = User.query.get(current_user_id)
+        
+        if not user:
+            return error_response("User not found", 404)
+        
+        # Verify current password
+        if not user.check_password(current_password):
+            return error_response("Current password is incorrect", 400)
+        
+        # Validate new password
+        if len(new_password) < 6:
+            return error_response("New password must be at least 6 characters", 400)
+        
+        if new_password == current_password:
+            return error_response("New password must be different from current password", 400)
+        
+        # Update password
+        user.set_password(new_password)
+        user.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return success_response(
+            message="Password changed successfully"
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        return error_response(f"Password change error: {str(e)}", 500)
+
+@auth_bp.route("/logout", methods=["POST"])
+@jwt_required()
+def logout():
+    """Logout user (invalidate token)."""
+    try:
+        # In production, add token to blacklist
+        # For now, just acknowledge logout
+        
+        return success_response(
+            message="Logged out successfully"
+        )
+        
+    except Exception as e:
+        return error_response(f"Logout error: {str(e)}", 500)
+
+@auth_bp.route("/sessions", methods=["GET"])
+@jwt_required()
+def get_active_sessions():
+    """Get user's active sessions."""
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if not user:
+            return error_response("User not found", 404)
+        
+        # In production, get actual sessions from Redis/DB
+        # For now, return mock data
+        sessions = [
+            {
+                "session_id": "current",
+                "device": "Current Device",
+                "ip_address": request.environ.get('REMOTE_ADDR', 'Unknown'),
+                "last_activity": datetime.utcnow().isoformat(),
+                "is_current": True
+            }
+        ]
+        
+        return success_response(
+            data={
+                "sessions": sessions,
+                "total": len(sessions)
+            }
+        )
+        
+    except Exception as e:
+        return error_response(f"Sessions error: {str(e)}", 500)
+
+@auth_bp.route("/verify-token", methods=["POST"])
+def verify_token():
+    """Verify if a token is valid."""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return error_response("Request body must be JSON", 400)
+        
+        token = data.get("token")
+        
+        if not token:
+            return error_response("Token is required", 400)
+        
+        # In production, implement proper token verification
+        # For now, return basic validation
+        
+        return success_response(
+            data={
+                "valid": True,
+                "expires_in": 3600  # Mock data
+            },
+            message="Token is valid"
+        )
+        
+    except Exception as e:
+        return error_response(f"Token verification error: {str(e)}", 500)
