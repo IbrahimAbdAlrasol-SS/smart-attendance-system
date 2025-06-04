@@ -377,3 +377,409 @@ def add_location_to_lecture_model():
         Lecture.latitude = db.Column(db.Float, nullable=True, default=33.3152)
     if not hasattr(Lecture, 'longitude'):
         Lecture.longitude = db.Column(db.Float, nullable=True, default=44.3661)
+
+
+@lectures_bp.route('/<int:lecture_id>/attendance-summary', methods=['POST'])
+@jwt_required()
+@teacher_required
+@limiter.limit("10 per minute")
+def get_lecture_attendance_summary(lecture_id):
+    """Get comprehensive attendance summary for a lecture."""
+    try:
+        current_user_id = get_jwt_identity()
+        
+        # Verify lecture exists and user has permission
+        lecture = Lecture.query.get_or_404(lecture_id)
+        
+        if not (lecture.teacher_id == current_user_id or 
+                User.query.get(current_user_id).role in [UserRole.ADMIN, UserRole.COORDINATOR]):
+            return error_response("Access denied", 403)
+        
+        # Get attendance records
+        attendance_records = AttendanceRecord.query.filter_by(lecture_id=lecture_id).all()
+        
+        # Calculate statistics
+        total_students = len(attendance_records)
+        present_count = len([r for r in attendance_records if r.is_present])
+        absent_count = total_students - present_count
+        exceptional_count = len([r for r in attendance_records if getattr(r, 'is_exceptional', False)])
+        
+        # Group by verification method
+        verification_stats = {}
+        for record in attendance_records:
+            method = getattr(record, 'verification_method', 'unknown')
+            if method not in verification_stats:
+                verification_stats[method] = {'total': 0, 'present': 0}
+            verification_stats[method]['total'] += 1
+            if record.is_present:
+                verification_stats[method]['present'] += 1
+        
+        # Get student details
+        student_details = []
+        for record in attendance_records:
+            student = User.query.get(record.student_id)
+            if student:
+                student_details.append({
+                    'student_id': record.student_id,
+                    'name': student.name,
+                    'university_id': getattr(student, 'student_id', 'N/A'),
+                    'is_present': record.is_present,
+                    'check_in_time': record.check_in_time.isoformat() if record.check_in_time else None,
+                    'verification_method': getattr(record, 'verification_method', 'unknown'),
+                    'is_exceptional': getattr(record, 'is_exceptional', False),
+                    'notes': getattr(record, 'notes', None)
+                })
+        
+        return success_response(
+            data={
+                'lecture_info': {
+                    'id': lecture.id,
+                    'title': lecture.title,
+                    'start_time': lecture.start_time.isoformat(),
+                    'end_time': lecture.end_time.isoformat(),
+                    'room': lecture.room
+                },
+                'attendance_summary': {
+                    'total_students': total_students,
+                    'present_count': present_count,
+                    'absent_count': absent_count,
+                    'exceptional_count': exceptional_count,
+                    'attendance_rate': round((present_count / total_students * 100), 2) if total_students > 0 else 0
+                },
+                'verification_breakdown': verification_stats,
+                'student_details': student_details
+            },
+            message="Attendance summary retrieved successfully"
+        )
+        
+    except Exception as e:
+        return error_response(f"Failed to get attendance summary: {str(e)}", 500)
+
+@lectures_bp.route('/teacher/<int:teacher_id>', methods=['GET'])
+@jwt_required()
+@limiter.limit("20 per minute")
+def get_teacher_lectures(teacher_id):
+    """Get all lectures for a specific teacher."""
+    try:
+        current_user_id = get_jwt_identity()
+        current_user = User.query.get(current_user_id)
+        
+        # Check permissions
+        if not (current_user_id == teacher_id or 
+                current_user.role in [UserRole.ADMIN, UserRole.COORDINATOR]):
+            return error_response("Access denied", 403)
+        
+        # Verify teacher exists
+        teacher = User.query.get_or_404(teacher_id)
+        if not teacher.is_teacher():
+            return error_response("User is not a teacher", 400)
+        
+        # Get query parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 10, type=int), 100)
+        status = request.args.get('status', 'all')  # all, active, inactive
+        from_date = request.args.get('from_date')
+        to_date = request.args.get('to_date')
+        
+        # Build query
+        query = Lecture.query.filter_by(teacher_id=teacher_id)
+        
+        if status == 'active':
+            query = query.filter_by(is_active=True)
+        elif status == 'inactive':
+            query = query.filter_by(is_active=False)
+        
+        if from_date:
+            try:
+                from_dt = datetime.fromisoformat(from_date)
+                query = query.filter(Lecture.start_time >= from_dt)
+            except ValueError:
+                return error_response("Invalid from_date format", 400)
+        
+        if to_date:
+            try:
+                to_dt = datetime.fromisoformat(to_date)
+                query = query.filter(Lecture.end_time <= to_dt)
+            except ValueError:
+                return error_response("Invalid to_date format", 400)
+        
+        # Execute query with pagination
+        lectures = query.order_by(Lecture.start_time.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Format response
+        lecture_list = []
+        for lecture in lectures.items:
+            lecture_data = lecture.to_dict()
+            
+            # Add attendance statistics
+            attendance_count = AttendanceRecord.query.filter_by(lecture_id=lecture.id).count()
+            present_count = AttendanceRecord.query.filter_by(
+                lecture_id=lecture.id, is_present=True
+            ).count()
+            
+            lecture_data['attendance_stats'] = {
+                'total_students': attendance_count,
+                'present_count': present_count,
+                'attendance_rate': round((present_count / attendance_count * 100), 2) if attendance_count > 0 else 0
+            }
+            
+            lecture_list.append(lecture_data)
+        
+        return success_response(
+            data={
+                'lectures': lecture_list,
+                'pagination': {
+                    'page': lectures.page,
+                    'pages': lectures.pages,
+                    'per_page': lectures.per_page,
+                    'total': lectures.total,
+                    'has_next': lectures.has_next,
+                    'has_prev': lectures.has_prev
+                },
+                'teacher_info': {
+                    'id': teacher.id,
+                    'name': teacher.name,
+                    'email': teacher.email
+                }
+            },
+            message=f"Found {lectures.total} lectures for teacher"
+        )
+        
+    except Exception as e:
+        return error_response(f"Failed to get teacher lectures: {str(e)}", 500)
+
+@lectures_bp.route('/<int:lecture_id>/room', methods=['PUT'])
+@jwt_required()
+@teacher_required
+@limiter.limit("5 per minute")
+def update_lecture_room(lecture_id):
+    """Update lecture room assignment."""
+    try:
+        current_user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        # Validate input
+        if not data or 'room' not in data:
+            return error_response("Room information is required", 400)
+        
+        # Get lecture
+        lecture = Lecture.query.get_or_404(lecture_id)
+        
+        # Check permissions
+        if not (lecture.teacher_id == current_user_id or 
+                User.query.get(current_user_id).role in [UserRole.ADMIN, UserRole.COORDINATOR]):
+            return error_response("Access denied", 403)
+        
+        # Validate room exists if room_id provided
+        room_id = data.get('room_id')
+        if room_id:
+            room = Room.query.get(room_id)
+            if not room:
+                return error_response("Room not found", 404)
+            
+            # Check room availability for the lecture time
+            conflicting_lectures = Lecture.query.filter(
+                Lecture.id != lecture_id,
+                Lecture.room == room.name,
+                Lecture.is_active == True,
+                db.or_(
+                    db.and_(Lecture.start_time <= lecture.start_time, Lecture.end_time > lecture.start_time),
+                    db.and_(Lecture.start_time < lecture.end_time, Lecture.end_time >= lecture.end_time),
+                    db.and_(Lecture.start_time >= lecture.start_time, Lecture.end_time <= lecture.end_time)
+                )
+            ).first()
+            
+            if conflicting_lectures:
+                return error_response("Room is already booked for this time slot", 409)
+            
+            lecture.room = room.name
+            # Update location if room has coordinates
+            if hasattr(room, 'center_latitude') and room.center_latitude:
+                lecture.latitude = room.center_latitude
+                lecture.longitude = room.center_longitude
+        else:
+            lecture.room = data['room']
+        
+        # Update additional location data if provided
+        if 'latitude' in data:
+            lecture.latitude = data['latitude']
+        if 'longitude' in data:
+            lecture.longitude = data['longitude']
+        
+        db.session.commit()
+        
+        return success_response(
+            data=lecture.to_dict(),
+            message="Lecture room updated successfully"
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        return error_response(f"Failed to update lecture room: {str(e)}", 500)
+
+@lectures_bp.route('/<int:lecture_id>/force', methods=['DELETE'])
+@jwt_required()
+@limiter.limit("3 per minute")
+def force_delete_lecture(lecture_id):
+    """Force delete lecture (admin only)."""
+    try:
+        current_user_id = get_jwt_identity()
+        current_user = User.query.get(current_user_id)
+        
+        # Only admins can force delete
+        if current_user.role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
+            return error_response("Admin access required", 403)
+        
+        lecture = Lecture.query.get_or_404(lecture_id)
+        
+        # Get related data for logging
+        attendance_count = AttendanceRecord.query.filter_by(lecture_id=lecture_id).count()
+        
+        # Delete related records first
+        AttendanceRecord.query.filter_by(lecture_id=lecture_id).delete()
+        AttendanceSession.query.filter_by(lecture_id=lecture_id).delete()
+        
+        # Delete the lecture
+        db.session.delete(lecture)
+        db.session.commit()
+        
+        return success_response(
+            data={
+                'deleted_lecture_id': lecture_id,
+                'deleted_attendance_records': attendance_count
+            },
+            message="Lecture and all related data deleted successfully"
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        return error_response(f"Failed to force delete lecture: {str(e)}", 500)
+
+@lectures_bp.route('/analytics', methods=['GET'])
+@jwt_required()
+@limiter.limit("10 per minute")
+def get_lectures_analytics():
+    """Get comprehensive lectures analytics."""
+    try:
+        current_user_id = get_jwt_identity()
+        current_user = User.query.get(current_user_id)
+        
+        # Get date range
+        from_date = request.args.get('from_date')
+        to_date = request.args.get('to_date')
+        teacher_id = request.args.get('teacher_id', type=int)
+        
+        # Build base query
+        query = Lecture.query
+        
+        # Filter by teacher if specified and user has permission
+        if teacher_id:
+            if not (current_user_id == teacher_id or 
+                    current_user.role in [UserRole.ADMIN, UserRole.COORDINATOR]):
+                return error_response("Access denied", 403)
+            query = query.filter_by(teacher_id=teacher_id)
+        elif current_user.role == UserRole.TEACHER:
+            # Teachers can only see their own analytics
+            query = query.filter_by(teacher_id=current_user_id)
+        
+        # Apply date filters
+        if from_date:
+            try:
+                from_dt = datetime.fromisoformat(from_date)
+                query = query.filter(Lecture.start_time >= from_dt)
+            except ValueError:
+                return error_response("Invalid from_date format", 400)
+        
+        if to_date:
+            try:
+                to_dt = datetime.fromisoformat(to_date)
+                query = query.filter(Lecture.end_time <= to_dt)
+            except ValueError:
+                return error_response("Invalid to_date format", 400)
+        
+        lectures = query.all()
+        
+        # Calculate analytics
+        total_lectures = len(lectures)
+        active_lectures = len([l for l in lectures if l.is_active])
+        
+        # Room usage statistics
+        room_usage = {}
+        for lecture in lectures:
+            room = lecture.room or 'Unknown'
+            if room not in room_usage:
+                room_usage[room] = 0
+            room_usage[room] += 1
+        
+        # Teacher statistics (if admin/coordinator)
+        teacher_stats = {}
+        if current_user.role in [UserRole.ADMIN, UserRole.COORDINATOR]:
+            for lecture in lectures:
+                teacher = User.query.get(lecture.teacher_id)
+                if teacher:
+                    teacher_name = teacher.name
+                    if teacher_name not in teacher_stats:
+                        teacher_stats[teacher_name] = {
+                            'total_lectures': 0,
+                            'total_attendance': 0,
+                            'average_attendance_rate': 0
+                        }
+                    
+                    teacher_stats[teacher_name]['total_lectures'] += 1
+                    
+                    # Calculate attendance for this teacher
+                    attendance_records = AttendanceRecord.query.filter_by(lecture_id=lecture.id).all()
+                    present_count = len([r for r in attendance_records if r.is_present])
+                    teacher_stats[teacher_name]['total_attendance'] += len(attendance_records)
+                    
+            # Calculate average attendance rates
+            for teacher_name in teacher_stats:
+                stats = teacher_stats[teacher_name]
+                if stats['total_lectures'] > 0:
+                    # This is a simplified calculation - in production you'd want more detailed stats
+                    stats['average_attendance_rate'] = round(
+                        (stats['total_attendance'] / stats['total_lectures']), 2
+                    )
+        
+        # Time-based analytics
+        daily_distribution = {}
+        hourly_distribution = {}
+        
+        for lecture in lectures:
+            # Daily distribution
+            day_name = lecture.start_time.strftime('%A')
+            if day_name not in daily_distribution:
+                daily_distribution[day_name] = 0
+            daily_distribution[day_name] += 1
+            
+            # Hourly distribution
+            hour = lecture.start_time.hour
+            if hour not in hourly_distribution:
+                hourly_distribution[hour] = 0
+            hourly_distribution[hour] += 1
+        
+        return success_response(
+            data={
+                'overview': {
+                    'total_lectures': total_lectures,
+                    'active_lectures': active_lectures,
+                    'inactive_lectures': total_lectures - active_lectures
+                },
+                'room_usage': dict(sorted(room_usage.items(), key=lambda x: x[1], reverse=True)),
+                'teacher_statistics': teacher_stats,
+                'time_distribution': {
+                    'daily': daily_distribution,
+                    'hourly': hourly_distribution
+                },
+                'date_range': {
+                    'from': from_date,
+                    'to': to_date
+                }
+            },
+            message="Lectures analytics retrieved successfully"
+        )
+        
+    except Exception as e:
+        return error_response(f"Failed to get lectures analytics: {str(e)}", 500)
