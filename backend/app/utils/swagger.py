@@ -41,7 +41,7 @@ def generate_swagger_spec():
         },
         "servers": [
             {
-                "url": "http://127.0.0.1:4000/api",
+                "url": "http://127.0.0.1:5000/api",
                 "description": "Development server"
             },
             {

@@ -4,7 +4,8 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
-from app.models.attendance import AttendanceRecord, AttendanceSession
+from app.models.attendance import AttendanceRecord
+from app.models.attendance_session import AttendanceSession
 from app.models.user import User, UserRole
 from app.models.room import Room
 from app.models.lecture import Lecture

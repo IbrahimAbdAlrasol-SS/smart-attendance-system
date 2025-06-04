@@ -5,7 +5,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db, limiter
 from app.models.lecture import Lecture
-from app.models.attendance import AttendanceSession
+from app.models.attendance_session import AttendanceSession
 from app.models.user import User
 from app.services.qr_service import QRService
 from app.utils.helpers import success_response, error_response
