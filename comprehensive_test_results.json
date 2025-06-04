@@ -1,0 +1,236 @@
+{
+  "metrics": {
+    "total_tests": 14,
+    "passed_tests": 2,
+    "failed_tests": 12,
+    "average_response_time_ms": 2775.3333333333335,
+    "max_response_time_ms": 10798,
+    "min_response_time_ms": 2028,
+    "total_test_duration_seconds": 33.311951637268066
+  },
+  "detailed_results": [
+    {
+      "test_name": "Admin Login",
+      "category": "Authentication",
+      "success": false,
+      "response_time_ms": 2056,
+      "details": {},
+      "error_message": "Failed to get admin token"
+    },
+    {
+      "test_name": "Student Login",
+      "category": "Authentication",
+      "success": false,
+      "response_time_ms": 2045,
+      "details": {},
+      "error_message": "Student login failed - may need to create test student"
+    },
+    {
+      "test_name": "3D Room Tests Skipped",
+      "category": "3D Room Management",
+      "success": false,
+      "response_time_ms": 0,
+      "details": {},
+      "error_message": "No admin token available"
+    },
+    {
+      "test_name": "Face Recognition Tests Skipped",
+      "category": "Face Recognition",
+      "success": false,
+      "response_time_ms": 0,
+      "details": {},
+      "error_message": "No student token available"
+    },
+    {
+      "test_name": "Auth Service Health",
+      "category": "System Analytics",
+      "success": false,
+      "response_time_ms": 2041,
+      "details": {
+        "service_healthy": false,
+        "response_message": null
+      },
+      "error_message": null
+    },
+    {
+      "test_name": "Rooms Service Health",
+      "category": "System Analytics",
+      "success": false,
+      "response_time_ms": 2028,
+      "details": {
+        "service_healthy": false,
+        "response_message": null
+      },
+      "error_message": null
+    },
+    {
+      "test_name": "Recording Service Health",
+      "category": "System Analytics",
+      "success": false,
+      "response_time_ms": 2046,
+      "details": {
+        "service_healthy": false,
+        "response_message": null
+      },
+      "error_message": null
+    },
+    {
+      "test_name": "Enhanced Attendance Health",
+      "category": "System Analytics",
+      "success": false,
+      "response_time_ms": 2045,
+      "details": {
+        "service_healthy": false,
+        "response_message": null
+      },
+      "error_message": null
+    },
+    {
+      "test_name": "QR Service Health",
+      "category": "System Analytics",
+      "success": false,
+      "response_time_ms": 2042,
+      "details": {
+        "service_healthy": false,
+        "response_message": null
+      },
+      "error_message": null
+    },
+    {
+      "test_name": "Lectures Service Health",
+      "category": "System Analytics",
+      "success": false,
+      "response_time_ms": 2043,
+      "details": {
+        "service_healthy": false,
+        "response_message": null
+      },
+      "error_message": null
+    },
+    {
+      "test_name": "Concurrent Requests Load Test",
+      "category": "Performance",
+      "success": false,
+      "response_time_ms": 10798,
+      "details": {
+        "concurrent_requests": 5,
+        "successful_requests": 0,
+        "success_rate": 0.0,
+        "total_time_seconds": 10.798665761947632,
+        "requests_per_second": 0.4630201647335927
+      },
+      "error_message": null
+    },
+    {
+      "test_name": "Unauthorized Access Block",
+      "category": "Security",
+      "success": false,
+      "response_time_ms": 2069,
+      "details": {
+        "unauthorized_blocked": true,
+        "status_code": 0
+      },
+      "error_message": null
+    },
+    {
+      "test_name": "Input Validation",
+      "category": "Security",
+      "success": true,
+      "response_time_ms": 2048,
+      "details": {
+        "invalid_data_rejected": true,
+        "validation_working": true
+      },
+      "error_message": null
+    },
+    {
+      "test_name": "SQL Injection Protection",
+      "category": "Security",
+      "success": true,
+      "response_time_ms": 2043,
+      "details": {
+        "sql_injection_blocked": true,
+        "system_protected": true
+      },
+      "error_message": null
+    }
+  ],
+  "comprehensive_report": {
+    "overall_assessment": {
+      "system_grade": "F",
+      "success_rate_percent": 14.285714285714285,
+      "total_tests_run": 14,
+      "critical_failures": 2,
+      "security_issues": 1,
+      "performance_issues": 1
+    },
+    "category_breakdown": {
+      "Authentication": {
+        "total_tests": 2,
+        "passed_tests": 0,
+        "failed_tests": 2,
+        "success_rate": 0.0,
+        "average_response_time_ms": 2050.5
+      },
+      "3D Room Management": {
+        "total_tests": 1,
+        "passed_tests": 0,
+        "failed_tests": 1,
+        "success_rate": 0.0,
+        "average_response_time_ms": 0.0
+      },
+      "Face Recognition": {
+        "total_tests": 1,
+        "passed_tests": 0,
+        "failed_tests": 1,
+        "success_rate": 0.0,
+        "average_response_time_ms": 0.0
+      },
+      "System Analytics": {
+        "total_tests": 6,
+        "passed_tests": 0,
+        "failed_tests": 6,
+        "success_rate": 0.0,
+        "average_response_time_ms": 2040.8333333333333
+      },
+      "Performance": {
+        "total_tests": 1,
+        "passed_tests": 0,
+        "failed_tests": 1,
+        "success_rate": 0.0,
+        "average_response_time_ms": 10798.0
+      },
+      "Security": {
+        "total_tests": 3,
+        "passed_tests": 2,
+        "failed_tests": 1,
+        "success_rate": 66.66666666666666,
+        "average_response_time_ms": 2053.3333333333335
+      }
+    },
+    "performance_summary": {
+      "average_response_time_ms": 2775.3333333333335,
+      "fastest_response_ms": 2028,
+      "slowest_response_ms": 10798,
+      "total_test_duration_seconds": 33.311951637268066
+    },
+    "system_recommendations": [
+      "\ud83d\udea8 CRITICAL: Fix authentication and authorization issues before deployment",
+      "\ud83d\udd12 HIGH PRIORITY: Address security vulnerabilities",
+      "\u26a1 PERFORMANCE: Optimize slow endpoints (>5s response time)",
+      "\ud83d\udd27 Improve Authentication system (success rate: 0.0%)",
+      "\ud83d\udd27 Improve 3D Room Management system (success rate: 0.0%)",
+      "\ud83d\udd27 Improve Face Recognition system (success rate: 0.0%)",
+      "\ud83d\udd27 Improve System Analytics system (success rate: 0.0%)",
+      "\ud83d\udd27 Improve Performance system (success rate: 0.0%)",
+      "\u26a1 Optimize Performance response times (avg: 10798ms)",
+      "\ud83d\udd27 Improve Security system (success rate: 66.7%)"
+    ],
+    "deployment_readiness": {
+      "ready_for_production": false,
+      "ready_for_testing": false,
+      "needs_major_fixes": true
+    }
+  },
+  "test_timestamp": "2025-06-04T07:44:52.011241"
+}

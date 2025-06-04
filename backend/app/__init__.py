@@ -1,5 +1,4 @@
-# File: backend/app/__init__.py (complete version)
-"""Smart Attendance System - Application Factory."""
+"""Smart Attendance System - Application Factory with Dynamic Recording."""
 import logging
 import os
 from flask import Flask, jsonify
@@ -59,7 +58,8 @@ def create_app(config_name: str = None) -> Flask:
         return jsonify({
             'status': 'healthy',
             'service': 'Smart Attendance System',
-            'version': '1.0.0'
+            'version': '2.0.0',
+            'features': ['3D Room Recording', 'Barometer Integration', 'Dynamic APIs']
         })
     
     return app
@@ -76,6 +76,9 @@ def register_blueprints(app: Flask) -> None:
     from app.api.reports import reports_bp
     from app.api.bot_webhook import bot_bp
     
+    # NEW: Dynamic Recording APIs
+    from app.api.dynamic_recording import recording_bp
+    
     # Auth
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     
@@ -89,6 +92,9 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(qr_bp, url_prefix='/api/qr')
     app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
     app.register_blueprint(reports_bp, url_prefix='/api/reports')
+    
+    # NEW: Dynamic Recording
+    app.register_blueprint(recording_bp, url_prefix='/api/recording')
     
     # Bot
     app.register_blueprint(bot_bp, url_prefix='/api/bot')
@@ -109,7 +115,7 @@ def register_blueprints(app: Flask) -> None:
         swaggerui_bp = get_swaggerui_blueprint(
             SWAGGER_URL,
             API_URL,
-            config={'app_name': "Smart Attendance System API"}
+            config={'app_name': "Smart Attendance System API v2.0"}
         )
         app.register_blueprint(swaggerui_bp, url_prefix=SWAGGER_URL)
     except ImportError:
@@ -185,16 +191,16 @@ def setup_logging(app: Flask) -> None:
         app.logger.addHandler(file_handler)
         
         app.logger.setLevel(logging.INFO)
-        app.logger.info('Smart Attendance System startup')
+        app.logger.info('Smart Attendance System v2.0 startup')
 
 def setup_database(app: Flask) -> None:
     """Setup database connections."""
     with app.app_context():
-        # Import all models
+        # Import all models (INCLUDING NEW ENHANCED ROOM MODEL)
         from app.models import (
             User, UserRole, Section,
             Student, StudyType, StudentStatus,
-            Room, Schedule, WeekDay,
+            Room, Schedule, WeekDay,  # Room is now enhanced with 3D features
             Lecture, AttendanceRecord, AttendanceSession,
             Assignment, SubjectException
         )
@@ -231,14 +237,14 @@ def register_commands(app: Flask) -> None:
     
     @app.cli.command()
     def seed_db():
-        """Seed database with test data."""
+        """Seed database with test data INCLUDING 3D rooms."""
         from app.services.seed_service import SeedService
         
         try:
             SeedService.seed_all()
-            click.echo('Database seeded successfully!')
+            click.echo('✅ Database seeded successfully with 3D rooms!')
         except Exception as e:
-            click.echo(f'Error seeding database: {str(e)}')
+            click.echo(f'❌ Error seeding database: {str(e)}')
     
     @app.cli.command()
     def create_admin():
@@ -263,4 +269,37 @@ def register_commands(app: Flask) -> None:
         except Exception as e:
             db.session.rollback()
             click.echo(f'Error creating admin: {str(e)}')
-
+    
+    # NEW COMMANDS FOR 3D RECORDING
+    @app.cli.command()
+    @click.argument('room_name')
+    @click.option('--building', default='المبنى الرئيسي', help='Building name')
+    @click.option('--floor', default=1, help='Floor number')
+    def start_recording(room_name, building, floor):
+        """Start a new room recording session (CLI helper)."""
+        click.echo(f'🎯 Starting recording for room: {room_name}')
+        click.echo(f'   Building: {building}')
+        click.echo(f'   Floor: {floor}')
+        click.echo('📱 Use the API endpoints to continue recording process')
+        click.echo('   POST /api/recording/start-session')
+        click.echo('   POST /api/recording/add-point/<session_id>')
+        click.echo('   POST /api/recording/complete-session/<session_id>')
+    
+    @app.cli.command()
+    def list_3d_rooms():
+        """List all 3D validated rooms."""
+        from app.models.room import Room
+        
+        rooms = Room.query.filter_by(is_3d_validated=True).all()
+        if not rooms:
+            click.echo('No 3D validated rooms found.')
+            return
+        
+        click.echo('🏗️ 3D Validated Rooms:')
+        click.echo('=' * 50)
+        for room in rooms:
+            click.echo(f'📍 {room.name} - {room.building} - Floor {room.floor}')
+            click.echo(f'   Area: {room.room_area_sqm:.1f}m² | Volume: {room.room_volume_cubic_m:.1f}m³')
+            click.echo(f'   Altitude: {room.room_floor_altitude:.1f}m - {room.room_ceiling_altitude:.1f}m')
+            click.echo(f'   Recorded by: User {room.recorded_by_user_id} at {room.recorded_at}')
+            click.echo('')
