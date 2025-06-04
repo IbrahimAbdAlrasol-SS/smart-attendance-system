@@ -1,5 +1,5 @@
 
-# backend/app/models/attendance_session.py
+# File: backend/app/models/attendance_session.py
 """Attendance session with QR codes."""
 from app import db
 from app.models.base import BaseModel
@@ -14,6 +14,7 @@ class AttendanceSession(BaseModel):
     lecture_id = db.Column(db.Integer, db.ForeignKey('lectures.id'), nullable=False)
     qr_code = db.Column(db.String(64), unique=True, nullable=False)
     expires_at = db.Column(db.DateTime, nullable=False)
+    expires_in_seconds = db.Column(db.Integer, default=60)  # Variable duration
     is_active = db.Column(db.Boolean, default=True)
     
     # Stats
@@ -40,6 +41,7 @@ class AttendanceSession(BaseModel):
             'lecture_id': self.lecture_id,
             'qr_code': self.qr_code,
             'expires_at': self.expires_at.isoformat(),
+            'expires_in_seconds': self.expires_in_seconds,
             'is_active': self.is_active and not self.is_expired(),
             'total_present': self.total_present,
             'total_absent': self.total_absent

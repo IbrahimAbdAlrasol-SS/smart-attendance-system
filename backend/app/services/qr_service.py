@@ -1,6 +1,5 @@
-
-# backend/app/services/qr_service.py
-"""QR Code generation and validation service."""
+# File: backend/app/services/qr_service.py
+"""QR Code generation and validation service with variable duration."""
 import qrcode
 import io
 import base64
@@ -21,7 +20,7 @@ class QRService:
     ) -> Tuple[str, str, str]:
         """
         Generate QR code for attendance.
-        Returns: (qr_code_string, qr_image_base64, expires_at)
+        Returns: (session_id, qr_image_base64, expires_at)
         """
         # Generate unique session ID
         session_id = secrets.token_urlsafe(32)
@@ -35,6 +34,7 @@ class QRService:
             'lecture_id': lecture_id,
             'room_id': room_id,
             'expires_at': expires_at.isoformat(),
+            'expires_in': expires_in_seconds,
             'hash': ''  # Will be calculated
         }
         
@@ -99,3 +99,22 @@ class QRService:
             return False, None, "Invalid QR code format"
         except Exception as e:
             return False, None, f"Validation error: {str(e)}"
+    
+    @staticmethod
+    def invalidate_lecture_qr_codes(lecture_id: int) -> int:
+        """Invalidate all QR codes for a lecture."""
+        from app.models.attendance_session import AttendanceSession
+        from app import db
+        
+        sessions = AttendanceSession.query.filter_by(
+            lecture_id=lecture_id,
+            is_active=True
+        ).all()
+        
+        count = 0
+        for session in sessions:
+            session.is_active = False
+            count += 1
+        
+        db.session.commit()
+        return count

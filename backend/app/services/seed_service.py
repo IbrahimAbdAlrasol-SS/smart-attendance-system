@@ -1,5 +1,4 @@
-
-# backend/app/services/seed_service.py
+# File: backend/app/services/seed_service.py
 """Database seeding service for test data."""
 from app import db
 from app.models.user import User, UserRole
@@ -22,7 +21,7 @@ class SeedService:
     
     @staticmethod
     def seed_rooms():
-        """Seed test rooms."""
+        """Seed test rooms with 3D data."""
         buildings = ['المبنى الرئيسي', 'مبنى الحاسبات', 'مبنى الهندسة']
         
         for building_idx, building in enumerate(buildings):
@@ -30,21 +29,29 @@ class SeedService:
                 for room_num in range(1, 4):  # 3 rooms per floor
                     room_name = f"{chr(65 + building_idx)}{floor}0{room_num}"
                     
+                    # Create polygon boundaries (rectangular room)
+                    base_lat = 33.3152 + (building_idx * 0.001)
+                    base_lng = 44.3661 + (room_num * 0.001)
+                    
+                    boundaries = [
+                        {"lat": base_lat, "lng": base_lng},
+                        {"lat": base_lat + 0.0001, "lng": base_lng},
+                        {"lat": base_lat + 0.0001, "lng": base_lng + 0.0001},
+                        {"lat": base_lat, "lng": base_lng + 0.0001}
+                    ]
+                    
                     room = Room(
                         name=room_name,
                         building=building,
                         floor=floor,
-                        altitude=floor * 3.5,  # 3.5 meters per floor
-                        center_latitude=33.3152 + (building_idx * 0.001),
-                        center_longitude=44.3661 + (room_num * 0.001),
-                        radius_meters=10.0,
+                        altitude=280 + (floor * 3.5),  # Baghdad altitude + floor height
+                        floor_altitude=(floor - 1) * 3.5,  # Height from ground
+                        ceiling_height=3.5,
+                        center_latitude=base_lat + 0.00005,
+                        center_longitude=base_lng + 0.00005,
                         capacity=30 + (room_num * 5),
-                        gps_boundaries=[
-                            {"lat": 33.3152, "lng": 44.3661},
-                            {"lat": 33.3153, "lng": 44.3661},
-                            {"lat": 33.3153, "lng": 44.3662},
-                            {"lat": 33.3152, "lng": 44.3662}
-                        ]
+                        gps_boundaries=boundaries,
+                        reference_pressure=1013.25 - (floor * 0.12)  # Pressure decreases with altitude
                     )
                     db.session.add(room)
         

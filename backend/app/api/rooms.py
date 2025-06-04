@@ -1,4 +1,4 @@
-# backend/app/api/rooms.py
+# File: backend/app/api/rooms.py
 """Room Management API - Admin Only."""
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -56,20 +56,20 @@ def get_room(room_id):
 @jwt_required()
 @admin_required
 def create_room():
-    """Create new room with GPS boundaries."""
+    """Create new room with 3D GPS boundaries."""
     try:
         data = request.get_json()
         
         # Validate required fields
-        required = ['name', 'building', 'floor', 'altitude', 'gps_boundaries', 
-                   'center_latitude', 'center_longitude']
+        required = ['name', 'building', 'floor', 'floor_altitude', 'ceiling_height',
+                   'gps_boundaries', 'center_latitude', 'center_longitude']
         for field in required:
             if field not in data:
                 return error_response(f"Missing required field: {field}", 400)
         
-        # Validate GPS boundaries (should have 4 points)
-        if len(data['gps_boundaries']) != 4:
-            return error_response("GPS boundaries must have exactly 4 points", 400)
+        # Validate GPS boundaries (should have at least 3 points)
+        if len(data['gps_boundaries']) < 3:
+            return error_response("GPS boundaries must have at least 3 points", 400)
         
         # Check if room name already exists
         if Room.query.filter_by(name=data['name']).first():
@@ -80,11 +80,13 @@ def create_room():
             name=data['name'],
             building=data['building'],
             floor=data['floor'],
-            altitude=data['altitude'],
+            altitude=data.get('altitude', 0),  # Sea level altitude
+            floor_altitude=data['floor_altitude'],
+            ceiling_height=data['ceiling_height'],
             gps_boundaries=data['gps_boundaries'],
+            reference_pressure=data.get('reference_pressure'),
             center_latitude=data['center_latitude'],
             center_longitude=data['center_longitude'],
-            radius_meters=data.get('radius_meters', 5.0),
             capacity=data.get('capacity', 30)
         )
         
@@ -111,9 +113,9 @@ def update_room(room_id):
         
         # Update allowed fields
         updatable_fields = [
-            'name', 'building', 'floor', 'altitude', 'gps_boundaries',
-            'center_latitude', 'center_longitude', 'radius_meters',
-            'capacity', 'is_active'
+            'name', 'building', 'floor', 'altitude', 'floor_altitude',
+            'ceiling_height', 'gps_boundaries', 'reference_pressure',
+            'center_latitude', 'center_longitude', 'capacity', 'is_active'
         ]
         
         for field in updatable_fields:
@@ -164,7 +166,10 @@ def check_location(room_id):
         if 'latitude' not in data or 'longitude' not in data:
             return error_response("Latitude and longitude required", 400)
         
-        # Simple distance check from center
+        # Check if inside polygon
+        is_inside = room.is_location_inside(data['latitude'], data['longitude'])
+        
+        # Calculate distance from center
         from math import radians, sin, cos, sqrt, atan2
         
         R = 6371000  # Earth radius in meters
@@ -180,16 +185,106 @@ def check_location(room_id):
         c = 2 * atan2(sqrt(a), sqrt(1-a))
         distance = R * c
         
-        is_inside = distance <= room.radius_meters
+        # Check altitude if provided
+        altitude_valid = None
+        if 'altitude' in data:
+            altitude_valid = room.is_altitude_valid(data['altitude'])
         
         return success_response(
             data={
                 'is_inside': is_inside,
-                'distance_meters': round(distance, 2),
-                'room_radius': room.radius_meters
+                'distance_from_center': round(distance, 2),
+                'altitude_valid': altitude_valid,
+                'room': {
+                    'name': room.name,
+                    'floor': room.floor,
+                    'floor_altitude': room.floor_altitude,
+                    'ceiling_height': room.ceiling_height
+                }
             }
         )
         
     except Exception as e:
         return error_response(f"Error checking location: {str(e)}", 500)
+
+@rooms_bp.route('/record-path', methods=['POST'])
+@jwt_required()
+@admin_required
+def record_room_path():
+    """Record room boundaries by walking around it."""
+    try:
+        data = request.get_json()
+        
+        # Required: array of GPS points
+        if 'path_points' not in data or not data['path_points']:
+            return error_response("Path points required", 400)
+        
+        if 'room_name' not in data:
+            return error_response("Room name required", 400)
+        
+        # Process path points to create polygon
+        points = data['path_points']
+        
+        # Ensure at least 3 points
+        if len(points) < 3:
+            return error_response("At least 3 points required", 400)
+        
+        # Calculate center point
+        lat_sum = sum(p['latitude'] for p in points)
+        lng_sum = sum(p['longitude'] for p in points)
+        center_lat = lat_sum / len(points)
+        center_lng = lng_sum / len(points)
+        
+        # Create GPS boundaries
+        gps_boundaries = [{'lat': p['latitude'], 'lng': p['longitude']} for p in points]
+        
+        # Get altitude data from first point
+        first_point = points[0]
+        
+        # Create or update room
+        room = Room.query.filter_by(name=data['room_name']).first()
+        
+        if room:
+            # Update existing room
+            room.gps_boundaries = gps_boundaries
+            room.center_latitude = center_lat
+            room.center_longitude = center_lng
+            if 'altitude' in first_point:
+                room.floor_altitude = first_point['altitude']
+            if 'pressure' in first_point:
+                room.reference_pressure = first_point['pressure']
+        else:
+            # Create new room
+            room = Room(
+                name=data['room_name'],
+                building=data.get('building', 'Main'),
+                floor=data.get('floor', 1),
+                altitude=first_point.get('altitude', 0),
+                floor_altitude=first_point.get('altitude', 0),
+                ceiling_height=data.get('ceiling_height', 3.5),
+                gps_boundaries=gps_boundaries,
+                reference_pressure=first_point.get('pressure'),
+                center_latitude=center_lat,
+                center_longitude=center_lng,
+                capacity=data.get('capacity', 30)
+            )
+            db.session.add(room)
+        
+        db.session.commit()
+        
+        return success_response(
+            data={
+                'room': room.to_dict(),
+                'points_recorded': len(points),
+                'area_center': {
+                    'latitude': center_lat,
+                    'longitude': center_lng
+                }
+            },
+            message="Room boundaries recorded successfully"
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        return error_response(f"Error recording room path: {str(e)}", 500)
 

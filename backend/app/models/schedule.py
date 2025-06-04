@@ -1,12 +1,11 @@
 
-# backend/app/models/schedule.py
+# File: backend/app/models/schedule.py
 """Schedule model for class timetables."""
 from app import db
 from app.models.base import BaseModel
-from app.models.user import Section  # إضافة import للـ Section
-from app.models.student import StudyType  # إضافة import للـ StudyType
+from app.models.user import Section
+from app.models.student import StudyType
 from datetime import time
-
 import enum
 
 class WeekDay(enum.Enum):
@@ -68,3 +67,4 @@ class Schedule(BaseModel):
             'is_active': self.is_active
         }
 
+        

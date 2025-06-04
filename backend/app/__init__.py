@@ -1,5 +1,4 @@
-
-# backend/app/__init__.py - Updated version
+# File: backend/app/__init__.py (complete version)
 """Smart Attendance System - Application Factory."""
 import logging
 import os
@@ -37,7 +36,7 @@ def create_app(config_name: str = None) -> Flask:
     limiter.init_app(app)
     
     # Configure CORS
-    CORS(app, origins=["http://localhost:*", "https://*.vercel.app"])
+    CORS(app, origins=app.config.get('CORS_ORIGINS', ["*"]))
     
     # Setup logging
     setup_logging(app)
@@ -53,6 +52,15 @@ def create_app(config_name: str = None) -> Flask:
     
     # Add CLI commands
     register_commands(app)
+    
+    # Add health check
+    @app.route('/health')
+    def health_check():
+        return jsonify({
+            'status': 'healthy',
+            'service': 'Smart Attendance System',
+            'version': '1.0.0'
+        })
     
     return app
 
@@ -93,7 +101,6 @@ def register_blueprints(app: Flask) -> None:
         SWAGGER_URL = '/api/docs'
         API_URL = '/api/swagger.json'
         
-        # إضافة route handler للـ swagger.json
         @app.route('/api/swagger.json')
         def swagger_spec():
             """Serve Swagger/OpenAPI specification."""
@@ -111,6 +118,8 @@ def register_blueprints(app: Flask) -> None:
 def register_error_handlers(app: Flask) -> None:
     """Register error handlers."""
     from app.utils.helpers import handle_error
+    from flask_jwt_extended import JWTManager
+    from werkzeug.exceptions import HTTPException
     
     @app.errorhandler(400)
     def bad_request(error):
@@ -130,16 +139,44 @@ def register_error_handlers(app: Flask) -> None:
     
     @app.errorhandler(500)
     def internal_error(error):
+        db.session.rollback()
         return handle_error(error, 500)
+    
+    @app.errorhandler(HTTPException)
+    def handle_exception(e):
+        return handle_error(e, e.code)
+    
+    # JWT error handlers
+    @jwt.expired_token_loader
+    def expired_token_callback(jwt_header, jwt_payload):
+        return jsonify({
+            'error': True,
+            'message': 'Token has expired',
+            'status_code': 401
+        }), 401
+    
+    @jwt.invalid_token_loader
+    def invalid_token_callback(error):
+        return jsonify({
+            'error': True,
+            'message': 'Invalid token',
+            'status_code': 401
+        }), 401
+    
+    @jwt.unauthorized_loader
+    def missing_token_callback(error):
+        return jsonify({
+            'error': True,
+            'message': 'Authorization token required',
+            'status_code': 401
+        }), 401
 
 def setup_logging(app: Flask) -> None:
     """Setup application logging."""
     if not app.debug and not app.testing:
-        # Create logs directory if it doesn't exist
         if not os.path.exists('logs'):
             os.mkdir('logs')
         
-        # Setup file handler
         file_handler = logging.FileHandler('logs/app.log')
         file_handler.setFormatter(logging.Formatter(
             '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
@@ -153,7 +190,7 @@ def setup_logging(app: Flask) -> None:
 def setup_database(app: Flask) -> None:
     """Setup database connections."""
     with app.app_context():
-        # Import all models to ensure they're registered
+        # Import all models
         from app.models import (
             User, UserRole, Section,
             Student, StudyType, StudentStatus,
@@ -202,4 +239,28 @@ def register_commands(app: Flask) -> None:
             click.echo('Database seeded successfully!')
         except Exception as e:
             click.echo(f'Error seeding database: {str(e)}')
+    
+    @app.cli.command()
+    def create_admin():
+        """Create admin user."""
+        email = click.prompt('Admin email')
+        name = click.prompt('Admin name')
+        password = click.prompt('Password', hide_input=True)
+        
+        from app.models.user import User, UserRole
+        
+        admin = User(
+            email=email,
+            name=name,
+            role=UserRole.ADMIN
+        )
+        admin.set_password(password)
+        
+        try:
+            db.session.add(admin)
+            db.session.commit()
+            click.echo(f'Admin user created: {email}')
+        except Exception as e:
+            db.session.rollback()
+            click.echo(f'Error creating admin: {str(e)}')
 

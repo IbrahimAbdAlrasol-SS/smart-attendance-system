@@ -1,6 +1,5 @@
-
-# backend/app/services/gps_service.py
-"""GPS verification service."""
+# File: backend/app/services/gps_service.py
+"""GPS verification service with 3D support."""
 import jwt
 from datetime import datetime, timedelta
 from typing import Dict, Tuple, Optional
@@ -33,18 +32,19 @@ class GPSService:
     @staticmethod
     def verify_location(user_lat: float, user_lng: float, room) -> Dict:
         """Verify if user is within room boundaries."""
-        # Calculate distance from room center
+        # Check if inside polygon
+        is_inside = room.is_location_inside(user_lat, user_lng)
+        
+        # Calculate distance from center
         distance = GPSService.calculate_distance(
             user_lat, user_lng,
             room.center_latitude, room.center_longitude
         )
         
-        is_inside = distance <= room.radius_meters
-        
         return {
             'is_inside': is_inside,
             'distance': distance,
-            'room_radius': room.radius_meters,
+            'room_name': room.name,
             'room_center': {
                 'latitude': room.center_latitude,
                 'longitude': room.center_longitude
@@ -52,7 +52,7 @@ class GPSService:
         }
     
     @staticmethod
-    def verify_altitude(user_altitude: float, room_altitude: float, tolerance: float = 3.0) -> Dict:
+    def verify_altitude(user_altitude: float, room_altitude: float, tolerance: float = 2.0) -> Dict:
         """Verify if user is at correct floor/altitude."""
         difference = abs(user_altitude - room_altitude)
         is_valid = difference <= tolerance

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Attendance - Test Dashboard</title>
+    <title>Smart Attendance System - Complete Dashboard</title>
     <style>
         * {
             margin: 0;
@@ -20,7 +20,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
@@ -68,6 +68,8 @@
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             display: none;
+            max-height: 80vh;
+            overflow-y: auto;
         }
 
         .panel.active {
@@ -85,7 +87,7 @@
             color: #333;
         }
 
-        .form-group input {
+        .form-group input, .form-group select, .form-group textarea {
             width: 100%;
             padding: 10px;
             border: 2px solid #ddd;
@@ -94,7 +96,7 @@
             transition: border-color 0.3s;
         }
 
-        .form-group input:focus {
+        .form-group input:focus, .form-group select:focus {
             outline: none;
             border-color: #667eea;
         }
@@ -124,6 +126,14 @@
 
         .btn.secondary:hover {
             background: #5a6268;
+        }
+
+        .btn.success {
+            background: #28a745;
+        }
+
+        .btn.danger {
+            background: #dc3545;
         }
 
         .response-box {
@@ -194,7 +204,7 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
 
-        .lecture-card {
+        .card {
             background: #f8f9fa;
             padding: 15px;
             border-radius: 10px;
@@ -202,21 +212,126 @@
             border-right: 5px solid #667eea;
         }
 
-        .lecture-card h3 {
+        .card h3 {
             color: #667eea;
             margin-bottom: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .table th, .table td {
+            padding: 10px;
+            text-align: right;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .table th {
+            background-color: #667eea;
+            color: white;
+        }
+
+        .table tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 600px;
+            position: relative;
+        }
+
+        .close {
+            position: absolute;
+            left: 20px;
+            top: 10px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #dc3545;
+        }
+
+        .room-map {
+            height: 400px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            margin: 20px 0;
+            position: relative;
+            background: #f8f9fa;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-right: 4px solid #2196F3;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-right: 4px solid #ff9800;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .error-box {
+            background: #f8d7da;
+            border-right: 4px solid #dc3545;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .success-box {
+            background: #d4edda;
+            border-right: 4px solid #28a745;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎓 نظام الحضور الذكي</h1>
-            <p>لوحة اختبار API</p>
+            <h1>🎓 نظام الحضور الذكي - لوحة التحكم الكاملة</h1>
+            <p>اختبار جميع APIs والوظائف</p>
         </div>
 
         <div class="tabs">
             <div class="tab active" onclick="showTab('auth')">🔐 المصادقة</div>
+            <div class="tab" onclick="showTab('students')">👥 الطلاب</div>
+            <div class="tab" onclick="showTab('rooms')">🏢 القاعات</div>
+            <div class="tab" onclick="showTab('schedules')">📅 الجداول</div>
             <div class="tab" onclick="showTab('lectures')">📚 المحاضرات</div>
             <div class="tab" onclick="showTab('qr')">📱 QR Codes</div>
             <div class="tab" onclick="showTab('attendance')">✅ الحضور</div>
@@ -227,38 +342,34 @@
         <div id="auth-panel" class="panel active">
             <h2>🔐 نظام المصادقة</h2>
             
-            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                <!-- Register Form -->
-                <div style="flex: 1; min-width: 300px;">
-                    <h3>تسجيل مستخدم جديد</h3>
-                    <div class="form-group">
-                        <label>الاسم:</label>
-                        <input type="text" id="register-name" placeholder="محمد أحمد">
-                    </div>
+            <div class="grid">
+                <!-- Admin Login -->
+                <div class="card">
+                    <h3>دخول الإدارة/المدرسين</h3>
                     <div class="form-group">
                         <label>البريد الإلكتروني:</label>
-                        <input type="email" id="register-email" placeholder="student@university.edu">
+                        <input type="email" id="admin-email" value="super@admin.com">
                     </div>
                     <div class="form-group">
                         <label>كلمة المرور:</label>
-                        <input type="password" id="register-password" placeholder="******">
+                        <input type="password" id="admin-password" value="super123456">
                     </div>
-                    <button class="btn" onclick="register()">تسجيل</button>
+                    <button class="btn" onclick="adminLogin()">دخول</button>
                 </div>
 
-                <!-- Login Form -->
-                <div style="flex: 1; min-width: 300px;">
-                    <h3>تسجيل الدخول</h3>
+                <!-- Student Login -->
+                <div class="card">
+                    <h3>دخول الطلاب</h3>
                     <div class="form-group">
-                        <label>البريد الإلكتروني:</label>
-                        <input type="email" id="login-email" placeholder="student@university.edu">
+                        <label>المعرف الجامعي:</label>
+                        <input type="text" id="student-id" placeholder="CS2025001">
                     </div>
                     <div class="form-group">
-                        <label>كلمة المرور:</label>
-                        <input type="password" id="login-password" placeholder="******">
+                        <label>الرمز السري:</label>
+                        <input type="text" id="student-code" placeholder="ABC123">
                     </div>
-                    <button class="btn" onclick="login()">دخول</button>
-                    <button class="btn secondary" onclick="getProfile()">ملفي الشخصي</button>
+                    <button class="btn" onclick="studentLogin()">دخول</button>
+                    <button class="btn secondary" onclick="registerFace()">تسجيل الوجه</button>
                 </div>
             </div>
 
@@ -270,20 +381,274 @@
             <div class="response-box" id="auth-response"></div>
         </div>
 
+        <!-- Students Panel -->
+        <div id="students-panel" class="panel">
+            <h2>👥 إدارة الطلاب</h2>
+            
+            <div class="grid">
+                <!-- Add Single Student -->
+                <div class="card">
+                    <h3>إضافة طالب واحد</h3>
+                    <div class="form-group">
+                        <label>الاسم الكامل:</label>
+                        <input type="text" id="student-name" placeholder="أحمد محمد علي">
+                    </div>
+                    <div class="form-group">
+                        <label>الشعبة:</label>
+                        <select id="student-section">
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>السنة الدراسية:</label>
+                        <select id="student-year">
+                            <option value="1">الأولى</option>
+                            <option value="2">الثانية</option>
+                            <option value="3">الثالثة</option>
+                            <option value="4">الرابعة</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>نوع الدراسة:</label>
+                        <select id="student-type">
+                            <option value="morning">صباحي</option>
+                            <option value="evening">مسائي</option>
+                            <option value="hosted">استضافة</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>القسم:</label>
+                        <input type="text" id="student-department" value="CS">
+                    </div>
+                    <div class="form-group">
+                        <label>سنة تحميل:</label>
+                        <input type="checkbox" id="student-repeater">
+                    </div>
+                    <div class="form-group">
+                        <label>المواد الراسبة (مفصولة بفاصلة):</label>
+                        <input type="text" id="student-failed" placeholder="Math101,CS201">
+                    </div>
+                    <button class="btn" onclick="addStudent()">إضافة طالب</button>
+                </div>
+
+                <!-- Bulk Import -->
+                <div class="card">
+                    <h3>إضافة دفعة طلاب</h3>
+                    <div class="info-box">
+                        <p>رفع ملف Excel/CSV يحتوي على بيانات الطلاب</p>
+                        <p>الأعمدة المطلوبة: full_name, section, study_year, study_type</p>
+                    </div>
+                    <div class="form-group">
+                        <label>اختر الملف:</label>
+                        <input type="file" id="student-file" accept=".csv,.xlsx,.xls">
+                    </div>
+                    <button class="btn secondary" onclick="downloadTemplate()">تحميل قالب</button>
+                    <button class="btn" onclick="importStudents()">رفع الملف</button>
+                </div>
+            </div>
+
+            <!-- Students List -->
+            <div class="card">
+                <h3>قائمة الطلاب</h3>
+                <div class="grid">
+                    <div class="form-group">
+                        <label>فلترة حسب الشعبة:</label>
+                        <select id="filter-section" onchange="loadStudents()">
+                            <option value="">الكل</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>فلترة حسب السنة:</label>
+                        <select id="filter-year" onchange="loadStudents()">
+                            <option value="">الكل</option>
+                            <option value="1">الأولى</option>
+                            <option value="2">الثانية</option>
+                            <option value="3">الثالثة</option>
+                            <option value="4">الرابعة</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn" onclick="loadStudents()">تحديث القائمة</button>
+                <button class="btn secondary" onclick="exportStudents()">تصدير CSV</button>
+                <div id="students-list"></div>
+            </div>
+
+            <div class="response-box" id="students-response"></div>
+        </div>
+
+        <!-- Rooms Panel -->
+        <div id="rooms-panel" class="panel">
+            <h2>🏢 إدارة القاعات ثلاثية الأبعاد</h2>
+            
+            <div class="grid">
+                <!-- Add Room -->
+                <div class="card">
+                    <h3>إضافة قاعة جديدة</h3>
+                    <div class="form-group">
+                        <label>اسم القاعة:</label>
+                        <input type="text" id="room-name" placeholder="A101">
+                    </div>
+                    <div class="form-group">
+                        <label>المبنى:</label>
+                        <input type="text" id="room-building" placeholder="المبنى الرئيسي">
+                    </div>
+                    <div class="form-group">
+                        <label>الطابق:</label>
+                        <input type="number" id="room-floor" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label>ارتفاع أرضية القاعة (متر):</label>
+                        <input type="number" id="room-floor-altitude" value="0" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>ارتفاع السقف (متر):</label>
+                        <input type="number" id="room-ceiling-height" value="3.5" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>سعة القاعة:</label>
+                        <input type="number" id="room-capacity" value="30">
+                    </div>
+                    <button class="btn" onclick="showRoomMap()">رسم حدود القاعة</button>
+                    <button class="btn success" onclick="addRoom()">حفظ القاعة</button>
+                </div>
+
+                <!-- Dynamic Room Recording -->
+                <div class="card">
+                    <h3>تسجيل ديناميكي للقاعة</h3>
+                    <div class="warning-box">
+                        <p>امشِ حول حدود القاعة مع التطبيق لتسجيل النقاط تلقائياً</p>
+                        <p>يتطلب GPS عالي الدقة + بارومتر</p>
+                    </div>
+                    <div class="form-group">
+                        <label>اسم القاعة المراد تسجيلها:</label>
+                        <input type="text" id="record-room-name" placeholder="A101">
+                    </div>
+                    <button class="btn" onclick="startRecording()">بدء التسجيل</button>
+                    <button class="btn danger" onclick="stopRecording()">إيقاف وحفظ</button>
+                    <div id="recording-status"></div>
+                </div>
+            </div>
+
+            <!-- Rooms List -->
+            <div class="card">
+                <h3>قائمة القاعات</h3>
+                <button class="btn" onclick="loadRooms()">تحديث القائمة</button>
+                <div id="rooms-list"></div>
+            </div>
+
+            <div class="response-box" id="rooms-response"></div>
+        </div>
+
+        <!-- Schedules Panel -->
+        <div id="schedules-panel" class="panel">
+            <h2>📅 إدارة الجداول الدراسية</h2>
+            
+            <div class="grid">
+                <!-- Add Schedule -->
+                <div class="card">
+                    <h3>إضافة جدول جديد</h3>
+                    <div class="form-group">
+                        <label>اسم المادة:</label>
+                        <input type="text" id="schedule-subject" placeholder="البرمجة المتقدمة">
+                    </div>
+                    <div class="form-group">
+                        <label>رمز المادة:</label>
+                        <input type="text" id="schedule-code" placeholder="CS301">
+                    </div>
+                    <div class="form-group">
+                        <label>المدرس:</label>
+                        <select id="schedule-teacher"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>القاعة:</label>
+                        <select id="schedule-room"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>الشعبة:</label>
+                        <select id="schedule-section">
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>السنة الدراسية:</label>
+                        <select id="schedule-year">
+                            <option value="1">الأولى</option>
+                            <option value="2">الثانية</option>
+                            <option value="3">الثالثة</option>
+                            <option value="4">الرابعة</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>نوع الدراسة:</label>
+                        <select id="schedule-study-type">
+                            <option value="morning">صباحي</option>
+                            <option value="evening">مسائي</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>اليوم:</label>
+                        <select id="schedule-day">
+                            <option value="SUNDAY">الأحد</option>
+                            <option value="MONDAY">الإثنين</option>
+                            <option value="TUESDAY">الثلاثاء</option>
+                            <option value="WEDNESDAY">الأربعاء</option>
+                            <option value="THURSDAY">الخميس</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>وقت البداية:</label>
+                        <input type="time" id="schedule-start">
+                    </div>
+                    <div class="form-group">
+                        <label>وقت النهاية:</label>
+                        <input type="time" id="schedule-end">
+                    </div>
+                    <button class="btn" onclick="addSchedule()">إضافة جدول</button>
+                </div>
+
+                <!-- Current Schedule -->
+                <div class="card">
+                    <h3>الجدول الحالي</h3>
+                    <button class="btn" onclick="getCurrentSchedule()">عرض المحاضرة الحالية</button>
+                    <div id="current-schedule"></div>
+                </div>
+            </div>
+
+            <!-- Schedules List -->
+            <div class="card">
+                <h3>جميع الجداول</h3>
+                <button class="btn" onclick="loadSchedules()">تحديث القائمة</button>
+                <div id="schedules-list"></div>
+            </div>
+
+            <div class="response-box" id="schedules-response"></div>
+        </div>
+
         <!-- Lectures Panel -->
         <div id="lectures-panel" class="panel">
             <h2>📚 إدارة المحاضرات</h2>
             
-            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 300px;">
+            <div class="grid">
+                <div class="card">
                     <h3>إنشاء محاضرة جديدة</h3>
                     <div class="form-group">
                         <label>عنوان المحاضرة:</label>
-                        <input type="text" id="lecture-title" placeholder="برمجة متقدمة">
+                        <input type="text" id="lecture-title" placeholder="برمجة متقدمة - المحاضرة 1">
+                    </div>
+                    <div class="form-group">
+                        <label>الوصف:</label>
+                        <textarea id="lecture-description" rows="3"></textarea>
                     </div>
                     <div class="form-group">
                         <label>القاعة:</label>
-                        <input type="text" id="lecture-room" placeholder="A101">
+                        <select id="lecture-room-select"></select>
                     </div>
                     <div class="form-group">
                         <label>وقت البداية:</label>
@@ -296,8 +661,8 @@
                     <button class="btn" onclick="createLecture()">إنشاء محاضرة</button>
                 </div>
 
-                <div style="flex: 1; min-width: 300px;">
-                    <h3>المحاضرات الحالية</h3>
+                <div class="card">
+                    <h3>المحاضرات النشطة</h3>
                     <button class="btn secondary" onclick="getLectures()">تحديث القائمة</button>
                     <div id="lectures-list"></div>
                 </div>
@@ -310,11 +675,18 @@
         <div id="qr-panel" class="panel">
             <h2>📱 نظام QR Code</h2>
             
-            <div class="form-group">
-                <label>معرف المحاضرة:</label>
-                <input type="number" id="qr-lecture-id" placeholder="1">
+            <div class="card">
+                <h3>إعدادات QR</h3>
+                <div class="form-group">
+                    <label>معرف المحاضرة:</label>
+                    <input type="number" id="qr-lecture-id" placeholder="1">
+                </div>
+                <div class="form-group">
+                    <label>مدة الصلاحية (ثانية):</label>
+                    <input type="number" id="qr-duration" value="60" min="30" max="300">
+                </div>
+                <button class="btn" onclick="generateQR()">توليد QR Code</button>
             </div>
-            <button class="btn" onclick="generateQR()">توليد QR Code</button>
             
             <div class="qr-container">
                 <div id="qr-display"></div>
@@ -325,30 +697,55 @@
 
         <!-- Attendance Panel -->
         <div id="attendance-panel" class="panel">
-            <h2>✅ تسجيل الحضور</h2>
+            <h2>✅ تسجيل الحضور - التحقق الثلاثي</h2>
             
-            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 300px;">
-                    <h3>تسجيل حضور بـ QR</h3>
+            <div class="grid">
+                <!-- Location Verification -->
+                <div class="card">
+                    <h3>1️⃣ التحقق من الموقع</h3>
                     <div class="form-group">
-                        <label>رمز QR:</label>
-                        <input type="text" id="attendance-qr" placeholder="QR Code">
+                        <label>معرف المحاضرة:</label>
+                        <input type="number" id="attendance-lecture-id" placeholder="1">
                     </div>
                     <div class="form-group">
-                        <label>الموقع (Latitude):</label>
+                        <label>خط العرض (Latitude):</label>
                         <input type="number" id="attendance-lat" placeholder="33.3152" step="0.0001">
                     </div>
                     <div class="form-group">
-                        <label>الموقع (Longitude):</label>
+                        <label>خط الطول (Longitude):</label>
                         <input type="number" id="attendance-lng" placeholder="44.3661" step="0.0001">
                     </div>
-                    <button class="btn" onclick="checkIn()">تسجيل حضور</button>
+                    <div class="form-group">
+                        <label>الارتفاع (Altitude):</label>
+                        <input type="number" id="attendance-altitude" placeholder="280" step="0.1">
+                    </div>
+                    <button class="btn" onclick="verifyLocation()">التحقق من الموقع</button>
                 </div>
 
-                <div style="flex: 1; min-width: 300px;">
-                    <h3>سجل الحضور</h3>
-                    <button class="btn secondary" onclick="getAttendance()">عرض السجل</button>
-                    <div id="attendance-list"></div>
+                <!-- QR & Face -->
+                <div class="card">
+                    <h3>2️⃣ + 3️⃣ QR + بصمة الوجه</h3>
+                    <div class="form-group">
+                        <label>رمز التحقق (من الخطوة 1):</label>
+                        <input type="text" id="verification-token" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>رمز QR:</label>
+                        <textarea id="attendance-qr" rows="3" placeholder="الصق رمز QR هنا"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>بصمة الوجه:</label>
+                        <input type="checkbox" id="face-verified"> تم التحقق من الوجه بنجاح
+                    </div>
+                    <button class="btn success" onclick="checkIn()">تسجيل الحضور</button>
+                    <button class="btn warning" onclick="exceptionalCheckIn()">حضور استثنائي</button>
+                </div>
+
+                <!-- My Attendance -->
+                <div class="card">
+                    <h3>سجل حضوري</h3>
+                    <button class="btn secondary" onclick="getMyAttendance()">عرض السجل</button>
+                    <div id="my-attendance"></div>
                 </div>
             </div>
 
@@ -357,34 +754,81 @@
 
         <!-- Reports Panel -->
         <div id="reports-panel" class="panel">
-            <h2>📊 التقارير</h2>
+            <h2>📊 التقارير والإحصائيات</h2>
             
-            <div class="form-group">
-                <label>نوع التقرير:</label>
-                <select id="report-type" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px;">
-                    <option value="daily">تقرير يومي</option>
-                    <option value="weekly">تقرير أسبوعي</option>
-                    <option value="monthly">تقرير شهري</option>
-                </select>
+            <div class="grid">
+                <div class="card">
+                    <h3>تقارير الحضور</h3>
+                    <div class="form-group">
+                        <label>نوع التقرير:</label>
+                        <select id="report-type">
+                            <option value="daily">يومي</option>
+                            <option value="weekly">أسبوعي</option>
+                            <option value="monthly">شهري</option>
+                            <option value="semester">فصلي</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>الشعبة:</label>
+                        <select id="report-section">
+                            <option value="">الكل</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="generateReport()">توليد تقرير</button>
+                    <button class="btn secondary" onclick="downloadReport()">تحميل PDF</button>
+                </div>
+
+                <div class="card">
+                    <h3>إحصائيات عامة</h3>
+                    <button class="btn" onclick="getStatistics()">عرض الإحصائيات</button>
+                    <div id="statistics"></div>
+                </div>
             </div>
-            <button class="btn" onclick="generateReport()">توليد تقرير</button>
-            <button class="btn secondary" onclick="downloadReport()">تحميل PDF</button>
 
             <div class="response-box" id="reports-response"></div>
         </div>
 
         <a href="/api/docs" class="swagger-link" target="_blank">
-            📖 Swagger Documentation
+            📖 Swagger API Documentation
         </a>
+    </div>
+
+    <!-- Room Map Modal -->
+    <div id="roomMapModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeRoomMap()">&times;</span>
+            <h2>رسم حدود القاعة</h2>
+            <div class="info-box">
+                <p>انقر على الخريطة لإضافة نقاط حدود القاعة</p>
+                <p>يجب إضافة 3 نقاط على الأقل</p>
+            </div>
+            <div id="room-map" class="room-map"></div>
+            <div id="room-points"></div>
+            <button class="btn success" onclick="saveRoomBoundaries()">حفظ الحدود</button>
+        </div>
     </div>
 
     <script>
         const API_BASE = 'http://127.0.0.1:5000/api';
         let authToken = localStorage.getItem('authToken');
+        let currentUser = null;
+        let roomPoints = [];
+        let recordingPoints = [];
+        let isRecording = false;
+
+        // Initialize
+        window.onload = function() {
+            if (authToken) {
+                getCurrentUser();
+            }
+            loadInitialData();
+        };
 
         // Tab switching
         function showTab(tabName) {
-            // Hide all panels
             document.querySelectorAll('.panel').forEach(panel => {
                 panel.classList.remove('active');
             });
@@ -392,26 +836,31 @@
                 tab.classList.remove('active');
             });
 
-            // Show selected panel
             document.getElementById(`${tabName}-panel`).classList.add('active');
             event.target.classList.add('active');
         }
 
         // API Helper
-        async function apiCall(endpoint, method = 'GET', data = null) {
+        async function apiCall(endpoint, method = 'GET', data = null, isFormData = false) {
             const options = {
                 method,
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                headers: {}
             };
+
+            if (!isFormData) {
+                options.headers['Content-Type'] = 'application/json';
+            }
 
             if (authToken) {
                 options.headers['Authorization'] = `Bearer ${authToken}`;
             }
 
             if (data) {
-                options.body = JSON.stringify(data);
+                if (isFormData) {
+                    options.body = data;
+                } else {
+                    options.body = JSON.stringify(data);
+                }
             }
 
             try {
@@ -421,128 +870,6 @@
             } catch (error) {
                 return { status: 500, data: { error: true, message: error.message } };
             }
-        }
-
-        
-        async function login() {
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-
-            const response = await apiCall('/api/auth', 'POST', { email, password });
-
-            if (response.status === 200) {
-                authToken = response.data.data.access_token;
-                localStorage.setItem('authToken', authToken);
-                
-                // Display user info
-                const userInfo = document.getElementById('user-info');
-                const userDetails = document.getElementById('user-details');
-                userInfo.style.display = 'block';
-                userDetails.innerHTML = `
-                    <p><strong>الاسم:</strong> ${response.data.data.user.name}</p>
-                    <p><strong>البريد:</strong> ${response.data.data.user.email}</p>
-                    <p><strong>الدور:</strong> ${response.data.data.user.role}</p>
-                    <p><strong>Token:</strong> ${authToken.substring(0, 20)}...</p>
-                `;
-            }
-
-            displayResponse('auth-response', response);
-        }
-
-        async function getProfile() {
-            const response = await apiCall('/auth/me', 'GET');
-            displayResponse('auth-response', response);
-        }
-
-        // Lectures Functions
-        async function createLecture() {
-            const title = document.getElementById('lecture-title').value;
-            const room = document.getElementById('lecture-room').value;
-            const startTime = document.getElementById('lecture-start').value;
-            const endTime = document.getElementById('lecture-end').value;
-
-            const response = await apiCall('/api/lectures', 'POST', {
-                title, room, 
-                start_time: startTime, 
-                end_time: endTime
-            });
-
-            displayResponse('lectures-response', response);
-            if (response.status === 201) {
-                getLectures();
-            }
-        }
-
-        async function getLectures() {
-            const response = await apiCall('/api/lectures', 'GET');
-            displayResponse('lectures-response', response);
-
-            if (response.status === 200 && response.data.data) {
-                const lecturesList = document.getElementById('lectures-list');
-                lecturesList.innerHTML = response.data.data.map(lecture => `
-                    <div class="lecture-card">
-                        <h3>${lecture.title}</h3>
-                        <p>القاعة: ${lecture.room}</p>
-                        <p>الوقت: ${new Date(lecture.start_time).toLocaleString('ar')}</p>
-                        <button class="btn" onclick="generateQRForLecture(${lecture.id})">توليد QR</button>
-                    </div>
-                `).join('');
-            }
-        }
-
-        // QR Functions
-        async function generateQR() {
-            const lectureId = document.getElementById('qr-lecture-id').value;
-            const response = await apiCall(`/lectures/${lectureId}/qr`, 'POST');
-            
-            displayResponse('qr-response', response);
-
-            if (response.status === 200) {
-                const qrDisplay = document.getElementById('qr-display');
-                qrDisplay.innerHTML = `
-                    <div class="qr-code">
-                        <img src="${response.data.data.qr_image}" alt="QR Code">
-                        <p>صالح لمدة: ${response.data.data.expires_in} ثانية</p>
-                        <p>الرمز: ${response.data.data.qr_code}</p>
-                    </div>
-                `;
-            }
-        }
-
-        function generateQRForLecture(lectureId) {
-            document.getElementById('qr-lecture-id').value = lectureId;
-            showTab('qr');
-            generateQR();
-        }
-
-        // Attendance Functions
-        async function checkIn() {
-            const qrCode = document.getElementById('attendance-qr').value;
-            const latitude = parseFloat(document.getElementById('attendance-lat').value);
-            const longitude = parseFloat(document.getElementById('attendance-lng').value);
-
-            const response = await apiCall('/attendance/checkin', 'POST', {
-                qr_code: qrCode,
-                location: { latitude, longitude }
-            });
-
-            displayResponse('attendance-response', response);
-        }
-
-        async function getAttendance() {
-            const response = await apiCall('/attendance/my-records', 'GET');
-            displayResponse('attendance-response', response);
-        }
-
-        // Reports Functions
-        async function generateReport() {
-            const reportType = document.getElementById('report-type').value;
-            const response = await apiCall(`/reports/${reportType}`, 'GET');
-            displayResponse('reports-response', response);
-        }
-
-        async function downloadReport() {
-            alert('تحميل التقرير كـ PDF - قيد التطوير');
         }
 
         // Display Response
@@ -560,14 +887,775 @@
             `;
         }
 
-        // Load sample data on page load
-        window.onload = function() {
-            // Set sample data
-            document.getElementById('login-email').value = 'student@university.edu';
-            document.getElementById('login-password').value = 'student123';
-            document.getElementById('attendance-lat').value = '33.3152';
-            document.getElementById('attendance-lng').value = '44.3661';
-        };
+        // 1. AUTH FUNCTIONS
+        async function adminLogin() {
+            const email = document.getElementById('admin-email').value;
+            const password = document.getElementById('admin-password').value;
+
+            const response = await apiCall('/auth/login', 'POST', { email, password });
+
+            if (response.status === 200) {
+                authToken = response.data.data.access_token;
+                localStorage.setItem('authToken', authToken);
+                currentUser = response.data.data.user;
+                showUserInfo();
+                loadInitialData();
+            }
+
+            displayResponse('auth-response', response);
+        }
+
+        async function studentLogin() {
+            const university_id = document.getElementById('student-id').value;
+            const secret_code = document.getElementById('student-code').value;
+
+            const response = await apiCall('/auth/student-login', 'POST', { 
+                university_id, 
+                secret_code 
+            });
+
+            if (response.status === 200) {
+                authToken = response.data.data.access_token;
+                localStorage.setItem('authToken', authToken);
+                currentUser = response.data.data.user;
+                showUserInfo();
+            }
+
+            displayResponse('auth-response', response);
+        }
+
+        async function registerFace() {
+            const response = await apiCall('/auth/register-face', 'POST', {});
+            displayResponse('auth-response', response);
+        }
+
+        async function getCurrentUser() {
+            const response = await apiCall('/auth/me', 'GET');
+            if (response.status === 200) {
+                currentUser = response.data.data;
+                showUserInfo();
+            }
+        }
+
+        function showUserInfo() {
+            const userInfo = document.getElementById('user-info');
+            const userDetails = document.getElementById('user-details');
+            userInfo.style.display = 'block';
+            userDetails.innerHTML = `
+                <p><strong>الاسم:</strong> ${currentUser.name}</p>
+                <p><strong>البريد:</strong> ${currentUser.email}</p>
+                <p><strong>الدور:</strong> ${currentUser.role}</p>
+                ${currentUser.student_profile ? `
+                    <p><strong>المعرف الجامعي:</strong> ${currentUser.student_profile.university_id}</p>
+                    <p><strong>الشعبة:</strong> ${currentUser.student_profile.section}</p>
+                    <p><strong>السنة:</strong> ${currentUser.student_profile.study_year}</p>
+                ` : ''}
+            `;
+        }
+
+        // 2. STUDENTS FUNCTIONS
+        async function addStudent() {
+            const data = {
+                full_name: document.getElementById('student-name').value,
+                section: document.getElementById('student-section').value,
+                study_year: parseInt(document.getElementById('student-year').value),
+                study_type: document.getElementById('student-type').value,
+                department: document.getElementById('student-department').value,
+                is_repeater: document.getElementById('student-repeater').checked,
+                failed_subjects: document.getElementById('student-failed').value.split(',').filter(s => s)
+            };
+
+            const response = await apiCall('/admin/students', 'POST', data);
+            displayResponse('students-response', response);
+
+            if (response.status === 201) {
+                const creds = response.data.data.credentials;
+                alert(`تم إنشاء الطالب بنجاح!\nالمعرف: ${creds.university_id}\nالرمز السري: ${creds.secret_code}`);
+                loadStudents();
+            }
+        }
+
+        async function importStudents() {
+            const fileInput = document.getElementById('student-file');
+            if (!fileInput.files[0]) {
+                alert('الرجاء اختيار ملف');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            const response = await apiCall('/admin/students/bulk', 'POST', formData, true);
+            displayResponse('students-response', response);
+        }
+
+        async function downloadTemplate() {
+            window.open(`${API_BASE}/admin/students/template`, '_blank');
+        }
+
+        async function loadStudents() {
+            const section = document.getElementById('filter-section').value;
+            const year = document.getElementById('filter-year').value;
+            
+            let url = '/admin/students?';
+            if (section) url += `section=${section}&`;
+            if (year) url += `study_year=${year}&`;
+
+            const response = await apiCall(url, 'GET');
+            
+            if (response.status === 200) {
+                const students = response.data.data.students;
+                const listDiv = document.getElementById('students-list');
+                
+                if (students.length === 0) {
+                    listDiv.innerHTML = '<p>لا يوجد طلاب</p>';
+                    return;
+                }
+
+                let html = '<table class="table"><thead><tr>';
+                html += '<th>المعرف</th><th>الاسم</th><th>الشعبة</th><th>السنة</th><th>النوع</th><th>الإجراءات</th>';
+                html += '</tr></thead><tbody>';
+
+                students.forEach(student => {
+                    html += `<tr>
+                        <td>${student.university_id}</td>
+                        <td>${student.full_name}</td>
+                        <td>${student.section}</td>
+                        <td>${student.study_year}</td>
+                        <td>${student.study_type}</td>
+                        <td>
+                            <button class="btn secondary" onclick="resetStudentCode(${student.id})">إعادة تعيين الرمز</button>
+                        </td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table>';
+                listDiv.innerHTML = html;
+            }
+
+            displayResponse('students-response', response);
+        }
+
+        async function resetStudentCode(studentId) {
+            const response = await apiCall(`/admin/students/${studentId}/reset-code`, 'POST');
+            if (response.status === 200) {
+                const data = response.data.data;
+                alert(`تم إعادة تعيين الرمز!\nالمعرف: ${data.university_id}\nالرمز الجديد: ${data.new_code}`);
+            }
+            displayResponse('students-response', response);
+        }
+
+        async function exportStudents() {
+            const section = document.getElementById('filter-section').value;
+            const year = document.getElementById('filter-year').value;
+            
+            let url = `${API_BASE}/admin/students/export?`;
+            if (section) url += `section=${section}&`;
+            if (year) url += `study_year=${year}`;
+
+            window.open(url, '_blank');
+        }
+
+        // 3. ROOMS FUNCTIONS
+        async function addRoom() {
+            if (roomPoints.length < 3) {
+                alert('يجب تحديد 3 نقاط على الأقل لحدود القاعة');
+                return;
+            }
+
+            const data = {
+                name: document.getElementById('room-name').value,
+                building: document.getElementById('room-building').value,
+                floor: parseInt(document.getElementById('room-floor').value),
+                floor_altitude: parseFloat(document.getElementById('room-floor-altitude').value),
+                ceiling_height: parseFloat(document.getElementById('room-ceiling-height').value),
+                capacity: parseInt(document.getElementById('room-capacity').value),
+                gps_boundaries: roomPoints,
+                center_latitude: roomPoints.reduce((sum, p) => sum + p.lat, 0) / roomPoints.length,
+                center_longitude: roomPoints.reduce((sum, p) => sum + p.lng, 0) / roomPoints.length
+            };
+
+            const response = await apiCall('/admin/rooms', 'POST', data);
+            displayResponse('rooms-response', response);
+
+            if (response.status === 201) {
+                loadRooms();
+                roomPoints = [];
+                closeRoomMap();
+            }
+        }
+
+        async function loadRooms() {
+            const response = await apiCall('/admin/rooms', 'GET');
+            
+            if (response.status === 200) {
+                const rooms = response.data.data;
+                const listDiv = document.getElementById('rooms-list');
+                const roomSelect = document.getElementById('schedule-room');
+                const lectureRoomSelect = document.getElementById('lecture-room-select');
+                
+                // Update room selects
+                roomSelect.innerHTML = '<option value="">اختر القاعة</option>';
+                if (lectureRoomSelect) {
+                    lectureRoomSelect.innerHTML = '<option value="">اختر القاعة</option>';
+                }
+                
+                if (rooms.length === 0) {
+                    listDiv.innerHTML = '<p>لا توجد قاعات</p>';
+                    return;
+                }
+
+                let html = '<table class="table"><thead><tr>';
+                html += '<th>الاسم</th><th>المبنى</th><th>الطابق</th><th>الارتفاع</th><th>السعة</th><th>الإجراءات</th>';
+                html += '</tr></thead><tbody>';
+
+                rooms.forEach(room => {
+                    // Add to selects
+                    roomSelect.innerHTML += `<option value="${room.id}">${room.name}</option>`;
+                    if (lectureRoomSelect) {
+                        lectureRoomSelect.innerHTML += `<option value="${room.id}">${room.name}</option>`;
+                    }
+
+                    html += `<tr>
+                        <td>${room.name}</td>
+                        <td>${room.building}</td>
+                        <td>${room.floor}</td>
+                        <td>${room.floor_altitude}م - ${room.floor_altitude + room.ceiling_height}م</td>
+                        <td>${room.capacity}</td>
+                        <td>
+                            <button class="btn secondary" onclick="checkRoomLocation(${room.id})">اختبار الموقع</button>
+                        </td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table>';
+                listDiv.innerHTML = html;
+            }
+
+            displayResponse('rooms-response', response);
+        }
+
+        async function checkRoomLocation(roomId) {
+            const lat = prompt('أدخل خط العرض:');
+            const lng = prompt('أدخل خط الطول:');
+            const alt = prompt('أدخل الارتفاع:');
+
+            if (!lat || !lng) return;
+
+            const data = {
+                latitude: parseFloat(lat),
+                longitude: parseFloat(lng),
+                altitude: alt ? parseFloat(alt) : null
+            };
+
+            const response = await apiCall(`/admin/rooms/${roomId}/check-location`, 'POST', data);
+            
+            if (response.status === 200) {
+                const result = response.data.data;
+                let msg = `الموقع ${result.is_inside ? 'داخل' : 'خارج'} القاعة\n`;
+                msg += `المسافة من المركز: ${result.distance_from_center} متر\n`;
+                if (result.altitude_valid !== null) {
+                    msg += `الارتفاع ${result.altitude_valid ? 'صحيح' : 'خاطئ'}`;
+                }
+                alert(msg);
+            }
+
+            displayResponse('rooms-response', response);
+        }
+
+        function showRoomMap() {
+            document.getElementById('roomMapModal').style.display = 'block';
+            roomPoints = [];
+            updateRoomPoints();
+        }
+
+        function closeRoomMap() {
+            document.getElementById('roomMapModal').style.display = 'none';
+        }
+
+        function updateRoomPoints() {
+            const pointsDiv = document.getElementById('room-points');
+            if (roomPoints.length === 0) {
+                pointsDiv.innerHTML = '<p>لم يتم إضافة نقاط بعد</p>';
+                return;
+            }
+
+            let html = '<h4>النقاط المحددة:</h4><ul>';
+            roomPoints.forEach((point, index) => {
+                html += `<li>نقطة ${index + 1}: ${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}</li>`;
+            });
+            html += '</ul>';
+            pointsDiv.innerHTML = html;
+        }
+
+        // Simulate map click (in real app, use Google Maps or Leaflet)
+        document.getElementById('room-map').addEventListener('click', function(e) {
+            const rect = this.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Convert to lat/lng (simplified)
+            const lat = 33.3152 + (y / rect.height) * 0.001;
+            const lng = 44.3661 + (x / rect.width) * 0.001;
+            
+            roomPoints.push({ lat, lng });
+            
+            // Draw point
+            const point = document.createElement('div');
+            point.style.position = 'absolute';
+            point.style.left = x - 5 + 'px';
+            point.style.top = y - 5 + 'px';
+            point.style.width = '10px';
+            point.style.height = '10px';
+            point.style.borderRadius = '50%';
+            point.style.backgroundColor = '#667eea';
+            this.appendChild(point);
+            
+            updateRoomPoints();
+        });
+
+        function saveRoomBoundaries() {
+            if (roomPoints.length < 3) {
+                alert('يجب تحديد 3 نقاط على الأقل');
+                return;
+            }
+            closeRoomMap();
+        }
+
+        // Dynamic Recording
+        async function startRecording() {
+            const roomName = document.getElementById('record-room-name').value;
+            if (!roomName) {
+                alert('الرجاء إدخال اسم القاعة');
+                return;
+            }
+
+            isRecording = true;
+            recordingPoints = [];
+            document.getElementById('recording-status').innerHTML = 
+                '<div class="success-box">جاري التسجيل... امشِ حول حدود القاعة</div>';
+
+            // Simulate GPS recording (in real app, use actual GPS)
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    position => {
+                        if (isRecording) {
+                            recordingPoints.push({
+                                latitude: position.coords.latitude,
+                                longitude: position.coords.longitude,
+                                altitude: position.coords.altitude,
+                                accuracy: position.coords.accuracy
+                            });
+                            
+                            document.getElementById('recording-status').innerHTML = 
+                                `<div class="success-box">تم تسجيل ${recordingPoints.length} نقطة</div>`;
+                        }
+                    },
+                    error => {
+                        alert('خطأ في GPS: ' + error.message);
+                    },
+                    { enableHighAccuracy: true }
+                );
+            }
+        }
+
+        async function stopRecording() {
+            if (!isRecording || recordingPoints.length < 3) {
+                alert('يجب تسجيل 3 نقاط على الأقل');
+                return;
+            }
+
+            isRecording = false;
+            
+            const data = {
+                room_name: document.getElementById('record-room-name').value,
+                path_points: recordingPoints,
+                building: 'المبنى الرئيسي',
+                floor: 1,
+                ceiling_height: 3.5
+            };
+
+            const response = await apiCall('/admin/rooms/record-path', 'POST', data);
+            displayResponse('rooms-response', response);
+
+            if (response.status === 200) {
+                document.getElementById('recording-status').innerHTML = 
+                    '<div class="success-box">تم حفظ حدود القاعة بنجاح</div>';
+                loadRooms();
+            }
+        }
+
+        // 4. SCHEDULES FUNCTIONS
+        async function addSchedule() {
+            const data = {
+                subject_name: document.getElementById('schedule-subject').value,
+                subject_code: document.getElementById('schedule-code').value,
+                teacher_id: parseInt(document.getElementById('schedule-teacher').value),
+                room_id: parseInt(document.getElementById('schedule-room').value),
+                section: document.getElementById('schedule-section').value,
+                study_year: parseInt(document.getElementById('schedule-year').value),
+                study_type: document.getElementById('schedule-study-type').value,
+                day_of_week: document.getElementById('schedule-day').value,
+                start_time: document.getElementById('schedule-start').value,
+                end_time: document.getElementById('schedule-end').value
+            };
+
+            const response = await apiCall('/schedules', 'POST', data);
+            displayResponse('schedules-response', response);
+
+            if (response.status === 201) {
+                loadSchedules();
+            }
+        }
+
+        async function loadSchedules() {
+            const response = await apiCall('/schedules', 'GET');
+            
+            if (response.status === 200) {
+                const schedules = response.data.data;
+                const listDiv = document.getElementById('schedules-list');
+                
+                if (schedules.length === 0) {
+                    listDiv.innerHTML = '<p>لا توجد جداول</p>';
+                    return;
+                }
+
+                // Group by day
+                const byDay = {};
+                schedules.forEach(schedule => {
+                    if (!byDay[schedule.day]) byDay[schedule.day] = [];
+                    byDay[schedule.day].push(schedule);
+                });
+
+                let html = '';
+                Object.keys(byDay).forEach(day => {
+                    html += `<h4>${day}</h4>`;
+                    html += '<table class="table"><thead><tr>';
+                    html += '<th>المادة</th><th>المدرس</th><th>القاعة</th><th>الشعبة</th><th>الوقت</th>';
+                    html += '</tr></thead><tbody>';
+
+                    byDay[day].forEach(schedule => {
+                        html += `<tr>
+                            <td>${schedule.subject_name}</td>
+                            <td>${schedule.teacher}</td>
+                            <td>${schedule.room}</td>
+                            <td>${schedule.section}-${schedule.study_year}</td>
+                            <td>${schedule.start_time} - ${schedule.end_time}</td>
+                        </tr>`;
+                    });
+
+                    html += '</tbody></table>';
+                });
+
+                listDiv.innerHTML = html;
+            }
+
+            displayResponse('schedules-response', response);
+        }
+
+        async function getCurrentSchedule() {
+            const response = await apiCall('/schedules/current', 'GET');
+            
+            if (response.status === 200) {
+                const data = response.data.data;
+                const div = document.getElementById('current-schedule');
+                
+                if (data.current) {
+                    const schedule = data.current;
+                    div.innerHTML = `
+                        <div class="success-box">
+                            <h4>المحاضرة الحالية</h4>
+                            <p><strong>المادة:</strong> ${schedule.subject_name}</p>
+                            <p><strong>المدرس:</strong> ${schedule.teacher}</p>
+                            <p><strong>القاعة:</strong> ${schedule.room}</p>
+                            <p><strong>الوقت:</strong> ${schedule.start_time} - ${schedule.end_time}</p>
+                        </div>
+                    `;
+                } else {
+                    div.innerHTML = '<div class="info-box">لا توجد محاضرة حالياً</div>';
+                }
+            }
+
+            displayResponse('schedules-response', response);
+        }
+
+        // 5. LECTURES FUNCTIONS
+        async function createLecture() {
+            const roomSelect = document.getElementById('lecture-room-select');
+            const roomId = parseInt(roomSelect.value);
+            
+            if (!roomId) {
+                alert('الرجاء اختيار القاعة');
+                return;
+            }
+
+            // Get room details for location
+            const roomResponse = await apiCall(`/admin/rooms/${roomId}`, 'GET');
+            if (roomResponse.status !== 200) {
+                alert('خطأ في جلب بيانات القاعة');
+                return;
+            }
+
+            const room = roomResponse.data.data;
+
+            const data = {
+                title: document.getElementById('lecture-title').value,
+                description: document.getElementById('lecture-description').value,
+                room: room.name,
+                start_time: document.getElementById('lecture-start').value,
+                end_time: document.getElementById('lecture-end').value,
+                latitude: room.center.latitude,
+                longitude: room.center.longitude
+            };
+
+            const response = await apiCall('/lectures', 'POST', data);
+            displayResponse('lectures-response', response);
+
+            if (response.status === 201) {
+                getLectures();
+            }
+        }
+
+        async function getLectures() {
+            const response = await apiCall('/lectures', 'GET');
+            displayResponse('lectures-response', response);
+
+            if (response.status === 200 && response.data.data) {
+                const lectures = response.data.data;
+                const listDiv = document.getElementById('lectures-list');
+                
+                if (lectures.length === 0) {
+                    listDiv.innerHTML = '<p>لا توجد محاضرات</p>';
+                    return;
+                }
+
+                let html = '<div class="grid">';
+                lectures.forEach(lecture => {
+                    const startTime = new Date(lecture.start_time);
+                    const endTime = new Date(lecture.end_time);
+                    const now = new Date();
+                    const isActive = now >= startTime && now <= endTime;
+
+                    html += `
+                        <div class="card">
+                            <h3>${lecture.title}</h3>
+                            <p><strong>القاعة:</strong> ${lecture.room}</p>
+                            <p><strong>المدرس:</strong> ${lecture.teacher ? lecture.teacher.name : 'غير محدد'}</p>
+                            <p><strong>الوقت:</strong> ${startTime.toLocaleString('ar')}</p>
+                            <p><strong>الحالة:</strong> ${isActive ? 
+                                '<span class="status-badge success">نشطة</span>' : 
+                                '<span class="status-badge">غير نشطة</span>'}</p>
+                            ${isActive ? `<button class="btn" onclick="generateQRForLecture(${lecture.id})">توليد QR</button>` : ''}
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                
+                listDiv.innerHTML = html;
+            }
+        }
+
+        // 6. QR FUNCTIONS
+        async function generateQR() {
+            const lectureId = document.getElementById('qr-lecture-id').value;
+            const duration = document.getElementById('qr-duration').value;
+
+            const response = await apiCall(`/qr/generate/${lectureId}`, 'POST', {
+                expires_in_seconds: parseInt(duration)
+            });
+            
+            displayResponse('qr-response', response);
+
+            if (response.status === 200) {
+                const qrDisplay = document.getElementById('qr-display');
+                const data = response.data.data;
+                qrDisplay.innerHTML = `
+                    <div class="qr-code">
+                        <img src="${data.qr_image}" alt="QR Code" style="max-width: 300px;">
+                        <p><strong>صالح لمدة:</strong> ${data.expires_in} ثانية</p>
+                        <p><strong>معرف الجلسة:</strong> ${data.session_id}</p>
+                        <p><strong>القاعة:</strong> ${data.lecture.room}</p>
+                        <div class="warning-box" style="margin-top: 10px;">
+                            <p><strong>بيانات QR للاختبار:</strong></p>
+                            <textarea rows="5" style="width: 100%;" readonly>${JSON.stringify({
+                                session_id: data.session_id,
+                                lecture_id: data.lecture.id,
+                                room_id: data.room_id || 1,
+                                expires_at: data.expires_at,
+                                expires_in: data.expires_in,
+                                hash: 'test-hash'
+                            }, null, 2)}</textarea>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function generateQRForLecture(lectureId) {
+            document.getElementById('qr-lecture-id').value = lectureId;
+            showTab('qr');
+            generateQR();
+        }
+
+        // 7. ATTENDANCE FUNCTIONS
+        async function verifyLocation() {
+            const data = {
+                lecture_id: parseInt(document.getElementById('attendance-lecture-id').value),
+                latitude: parseFloat(document.getElementById('attendance-lat').value),
+                longitude: parseFloat(document.getElementById('attendance-lng').value),
+                altitude: parseFloat(document.getElementById('attendance-altitude').value)
+            };
+
+            const response = await apiCall('/attendance/verify-location', 'POST', data);
+            displayResponse('attendance-response', response);
+
+            if (response.status === 200) {
+                const token = response.data.data.verification_token;
+                document.getElementById('verification-token').value = token;
+                
+                const successBox = document.createElement('div');
+                successBox.className = 'success-box';
+                successBox.innerHTML = `
+                    <p>✅ تم التحقق من الموقع بنجاح!</p>
+                    <p>القاعة: ${response.data.data.room}</p>
+                    <p>صالح لمدة: ${response.data.data.expires_in} ثانية</p>
+                `;
+                document.getElementById('attendance-response').prepend(successBox);
+            }
+        }
+
+        async function checkIn() {
+            const data = {
+                qr_data: document.getElementById('attendance-qr').value,
+                verification_token: document.getElementById('verification-token').value,
+                face_verified: document.getElementById('face-verified').checked,
+                latitude: parseFloat(document.getElementById('attendance-lat').value),
+                longitude: parseFloat(document.getElementById('attendance-lng').value),
+                altitude: parseFloat(document.getElementById('attendance-altitude').value)
+            };
+
+            const response = await apiCall('/attendance/checkin', 'POST', data);
+            displayResponse('attendance-response', response);
+
+            if (response.status === 200) {
+                alert('تم تسجيل حضورك بنجاح!');
+                getMyAttendance();
+            }
+        }
+
+        async function exceptionalCheckIn() {
+            const data = {
+                qr_data: document.getElementById('attendance-qr').value,
+                face_verified: document.getElementById('face-verified').checked,
+                exception_reason: 'GPS verification failed',
+                latitude: parseFloat(document.getElementById('attendance-lat').value),
+                longitude: parseFloat(document.getElementById('attendance-lng').value),
+                altitude: parseFloat(document.getElementById('attendance-altitude').value)
+            };
+
+            const response = await apiCall('/attendance/exceptional-checkin', 'POST', data);
+            displayResponse('attendance-response', response);
+        }
+
+        async function getMyAttendance() {
+            const response = await apiCall('/attendance/my-records', 'GET');
+            displayResponse('attendance-response', response);
+
+            if (response.status === 200) {
+                const data = response.data.data;
+                const div = document.getElementById('my-attendance');
+                
+                let html = `
+                    <div class="info-box">
+                        <h4>الإحصائيات</h4>
+                        <p>إجمالي المحاضرات: ${data.statistics.total_lectures}</p>
+                        <p>الحضور: ${data.statistics.present}</p>
+                        <p>الغياب: ${data.statistics.absent}</p>
+                        <p>معلق: ${data.statistics.pending}</p>
+                        <p>نسبة الحضور: ${data.statistics.attendance_rate}%</p>
+                    </div>
+                `;
+
+                if (data.records.length > 0) {
+                    html += '<table class="table"><thead><tr>';
+                    html += '<th>المحاضرة</th><th>القاعة</th><th>الوقت</th><th>الحالة</th>';
+                    html += '</tr></thead><tbody>';
+
+                    data.records.forEach(record => {
+                        const checkInTime = new Date(record.check_in_time);
+                        html += `<tr>
+                            <td>${record.lecture}</td>
+                            <td>${record.room}</td>
+                            <td>${checkInTime.toLocaleString('ar')}</td>
+                            <td>
+                                ${record.is_present ? 
+                                    '<span class="status-badge success">حاضر</span>' : 
+                                    record.is_exceptional ? 
+                                        '<span class="status-badge warning">معلق</span>' :
+                                        '<span class="status-badge error">غائب</span>'
+                                }
+                            </td>
+                        </tr>`;
+                    });
+
+                    html += '</tbody></table>';
+                }
+
+                div.innerHTML = html;
+            }
+        }
+
+        // 8. REPORTS FUNCTIONS
+        async function generateReport() {
+            alert('توليد التقارير - قيد التطوير');
+        }
+
+        async function downloadReport() {
+            alert('تحميل التقرير كـ PDF - قيد التطوير');
+        }
+
+        async function getStatistics() {
+            const div = document.getElementById('statistics');
+            div.innerHTML = `
+                <div class="info-box">
+                    <h4>إحصائيات النظام</h4>
+                    <p>عدد الطلاب المسجلين: 120</p>
+                    <p>عدد المحاضرات اليوم: 15</p>
+                    <p>متوسط نسبة الحضور: 85%</p>
+                    <p>القاعات النشطة: 8</p>
+                </div>
+            `;
+        }
+
+        // Load initial data
+        async function loadInitialData() {
+            if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin')) {
+                loadTeachers();
+                loadRooms();
+            }
+        }
+
+        async function loadTeachers() {
+            // This would normally be a separate API endpoint
+            const teachers = [
+                { id: 1, name: 'د. أحمد حسن' },
+                { id: 2, name: 'د. فاطمة علي' },
+                { id: 3, name: 'د. محمد إبراهيم' }
+            ];
+
+            const select = document.getElementById('schedule-teacher');
+            select.innerHTML = '<option value="">اختر المدرس</option>';
+            teachers.forEach(teacher => {
+                select.innerHTML += `<option value="${teacher.id}">${teacher.name}</option>`;
+            });
+        }
+
+        // Set default values for testing
+        document.getElementById('admin-email').value = 'super@admin.com';
+        document.getElementById('admin-password').value = 'super123456';
+        document.getElementById('attendance-lat').value = '33.3152';
+        document.getElementById('attendance-lng').value = '44.3661';
+        document.getElementById('attendance-altitude').value = '280';
     </script>
 </body>
 </html>

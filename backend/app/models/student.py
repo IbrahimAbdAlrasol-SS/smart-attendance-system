@@ -1,6 +1,4 @@
-
-
-# backend/app/models/student.py
+# File: backend/app/models/student.py
 """Enhanced Student model with university ID and secret code."""
 from app import db
 from app.models.base import BaseModel
@@ -54,6 +52,10 @@ class Student(BaseModel):
     status = db.Column(db.Enum(StudentStatus), default=StudentStatus.ACTIVE)
     enrollment_date = db.Column(db.Date, nullable=True)
     
+    # Face Recognition
+    face_registered = db.Column(db.Boolean, default=False)
+    face_registered_at = db.Column(db.DateTime, nullable=True)
+    
     # Relationships
     user = db.relationship('User', backref=db.backref('student_profile', uselist=False))
     subject_exceptions = db.relationship('SubjectException', backref='student', lazy='dynamic')
@@ -93,6 +95,7 @@ class Student(BaseModel):
             'department': self.department,
             'status': self.status.value if self.status else None,
             'failed_subjects': self.failed_subjects,
+            'face_registered': self.face_registered,
             'created_at': self.created_at.isoformat()
         }
 

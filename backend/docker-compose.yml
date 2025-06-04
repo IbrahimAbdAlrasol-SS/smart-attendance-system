@@ -1,43 +1,52 @@
-﻿services:
+﻿version: '3.8'
+
+services:
   postgres:
     image: postgres:15-alpine
     container_name: smart_attendance_db
     environment:
-      POSTGRES_DB: smart_attendance_dev
+      POSTGRES_DB: smart_attendance
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_PASSWORD: postgres123
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - smart_attendance_network
+      - smart_attendance
 
   redis:
     image: redis:7-alpine
     container_name: smart_attendance_redis
     ports:
-      - "6380:6379"
-    volumes:
-      - redis_data:/data
+      - "6379:6379"
     networks:
-      - smart_attendance_network
+      - smart_attendance
 
-  adminer:
-    image: adminer:latest
-    container_name: smart_attendance_adminer
+  backend:
+    build: ./backend
+    container_name: smart_attendance_backend
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres123@postgres:5432/smart_attendance
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=your-secret-key-here
+      - JWT_SECRET_KEY=your-jwt-secret-here
     ports:
-      - "8080:8080"
+      - "5000:5000"
     depends_on:
       - postgres
+      - redis
     networks:
-      - smart_attendance_network
+      - smart_attendance
+    volumes:
+      - ./backend:/app
+      - ./logs:/app/logs
 
 volumes:
   postgres_data:
-  redis_data:
+  
 
 networks:
-  smart_attendance_network:
+  smart_attendance:
     driver: bridge

@@ -1,6 +1,4 @@
-
-
-# backend/app/services/student_service.py
+# File: backend/app/services/student_service.py
 """Student management service."""
 from typing import Dict, List, Tuple, Optional
 from app import db

@@ -1,4 +1,4 @@
-# backend/app/utils/decorators.py
+# File: backend/app/utils/decorators.py
 """Custom decorators for authorization and validation."""
 from functools import wraps
 from flask_jwt_extended import get_jwt_identity
@@ -68,4 +68,4 @@ def super_admin_required(f):
         
         return f(*args, **kwargs)
     return decorated_function
-
+    

@@ -1,5 +1,4 @@
-
-# backend/app/api/attendance.py - Updated
+# File: backend/app/api/attendance.py
 """Attendance API endpoints with triple verification."""
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -48,29 +47,21 @@ def verify_location():
         if now < lecture.start_time or now > lecture.end_time:
             return error_response("Lecture is not active at this time", 400)
         
-        # Verify GPS location
-        gps_result = GPSService.verify_location(
-            user_lat=data['latitude'],
-            user_lng=data['longitude'],
-            room=room
-        )
+        # Verify GPS location (inside polygon)
+        is_inside = room.is_location_inside(data['latitude'], data['longitude'])
         
-        if not gps_result['is_inside']:
+        if not is_inside:
             return error_response(
-                f"أنت خارج القاعة. يجب أن تكون داخل قاعة {room.name} - المسافة: {gps_result['distance']:.1f} متر",
+                f"أنت خارج القاعة. يجب أن تكون داخل قاعة {room.name}",
                 400
             )
         
         # Verify altitude
-        altitude_result = GPSService.verify_altitude(
-            user_altitude=data['altitude'],
-            room_altitude=room.altitude,
-            tolerance=3.0  # 3 meters tolerance
-        )
+        altitude_valid = room.is_altitude_valid(data['altitude'])
         
-        if not altitude_result['is_valid']:
+        if not altitude_valid:
             return error_response(
-                f"أنت في الطابق الخطأ. فرق الارتفاع: {altitude_result['difference']:.1f} متر",
+                f"أنت في الطابق الخطأ. يجب أن تكون في الطابق {room.floor}",
                 400
             )
         
@@ -84,6 +75,7 @@ def verify_location():
         return success_response(
             data={
                 'location_verified': True,
+                'altitude_verified': True,
                 'verification_token': verification_token,
                 'room': room.name,
                 'expires_in': 120  # seconds
@@ -142,6 +134,11 @@ def check_in():
         if not data.get('face_verified', False):
             return error_response("Face verification failed", 401)
         
+        # Check if student has registered face
+        student = user.student_profile
+        if not student.face_registered:
+            return error_response("Please register your face first", 400)
+        
         # Check if already marked attendance
         existing = AttendanceRecord.query.filter_by(
             student_id=current_user_id,
@@ -158,7 +155,14 @@ def check_in():
             session_id=session.id,
             check_in_time=datetime.utcnow(),
             verification_method='triple',  # GPS + QR + Face
-            is_present=True
+            gps_verified=True,
+            altitude_verified=True,
+            qr_verified=True,
+            face_verified=True,
+            is_present=True,
+            latitude=data.get('latitude'),
+            longitude=data.get('longitude'),
+            altitude=data.get('altitude')
         )
         
         db.session.add(attendance)
@@ -181,6 +185,123 @@ def check_in():
     except Exception as e:
         db.session.rollback()
         return error_response(f"Error marking attendance: {str(e)}", 500)
+
+@attendance_bp.route('/exceptional-checkin', methods=['POST'])
+@jwt_required()
+def exceptional_check_in():
+    """Handle exceptional attendance (GPS failed but other checks passed)."""
+    try:
+        data = request.get_json()
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if user.role != UserRole.STUDENT:
+            return error_response("Only students can mark attendance", 403)
+        
+        # Required fields
+        required = ['qr_data', 'face_verified', 'exception_reason']
+        for field in required:
+            if field not in data:
+                return error_response(f"Missing required field: {field}", 400)
+        
+        # Validate QR code
+        is_valid, qr_info, error_msg = QRService.validate_qr_code(data['qr_data'])
+        if not is_valid:
+            return error_response(error_msg or "Invalid QR code", 400)
+        
+        # Get attendance session
+        session = AttendanceSession.query.filter_by(
+            qr_code=qr_info['session_id'],
+            is_active=True
+        ).first()
+        
+        if not session:
+            return error_response("Invalid or expired attendance session", 400)
+        
+        # Verify face recognition
+        if not data.get('face_verified', False):
+            return error_response("Face verification failed", 401)
+        
+        # Check if already marked attendance
+        existing = AttendanceRecord.query.filter_by(
+            student_id=current_user_id,
+            lecture_id=session.lecture_id
+        ).first()
+        
+        if existing:
+            return error_response("Attendance already marked for this lecture", 400)
+        
+        # Create exceptional attendance record (needs approval)
+        attendance = AttendanceRecord(
+            student_id=current_user_id,
+            lecture_id=session.lecture_id,
+            session_id=session.id,
+            check_in_time=datetime.utcnow(),
+            verification_method='emergency',
+            gps_verified=False,
+            altitude_verified=data.get('altitude_verified', False),
+            qr_verified=True,
+            face_verified=True,
+            is_present=False,  # Not present until approved
+            is_exceptional=True,
+            exception_reason=data.get('exception_reason'),
+            latitude=data.get('latitude'),
+            longitude=data.get('longitude'),
+            altitude=data.get('altitude')
+        )
+        
+        db.session.add(attendance)
+        db.session.commit()
+        
+        # TODO: Send notification to teacher for approval
+        
+        return success_response(
+            data={
+                'attendance_id': attendance.id,
+                'status': 'pending_approval',
+                'lecture': session.lecture.title,
+                'room': session.lecture.room.name,
+                'check_in_time': attendance.check_in_time.isoformat()
+            },
+            message="تم تسجيل حضورك الاستثنائي. في انتظار موافقة المدرس"
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        return error_response(f"Error marking exceptional attendance: {str(e)}", 500)
+
+@attendance_bp.route('/approve/<int:attendance_id>', methods=['POST'])
+@jwt_required()
+def approve_attendance(attendance_id):
+    """Approve exceptional attendance (teacher only)."""
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if not user.is_teacher():
+            return error_response("Only teachers can approve attendance", 403)
+        
+        # Get attendance record
+        attendance = AttendanceRecord.query.get_or_404(attendance_id)
+        
+        # Verify teacher owns the lecture
+        if attendance.lecture.teacher_id != current_user_id:
+            return error_response("You can only approve attendance for your lectures", 403)
+        
+        # Update attendance
+        attendance.is_present = True
+        attendance.approved_by = current_user_id
+        attendance.approved_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return success_response(
+            message="Attendance approved successfully"
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        return error_response(f"Error approving attendance: {str(e)}", 500)
 
 @attendance_bp.route('/my-records', methods=['GET'])
 @jwt_required()
@@ -219,12 +340,15 @@ def get_my_attendance():
                 'teacher': lecture.teacher.name,
                 'check_in_time': record.check_in_time.isoformat(),
                 'is_present': record.is_present,
-                'verification_method': record.verification_method
+                'is_exceptional': record.is_exceptional,
+                'verification_method': record.verification_method,
+                'approved': record.approved_by is not None
             })
         
         # Calculate statistics
         total_lectures = len(records)
         present_count = len([r for r in records if r.is_present])
+        pending_count = len([r for r in records if r.is_exceptional and not r.is_present])
         attendance_rate = (present_count / total_lectures * 100) if total_lectures > 0 else 0
         
         return success_response(
@@ -233,7 +357,8 @@ def get_my_attendance():
                 'statistics': {
                     'total_lectures': total_lectures,
                     'present': present_count,
-                    'absent': total_lectures - present_count,
+                    'absent': total_lectures - present_count - pending_count,
+                    'pending': pending_count,
                     'attendance_rate': round(attendance_rate, 2)
                 }
             }

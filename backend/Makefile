@@ -1,59 +1,59 @@
-.PHONY: help install dev-install test clean setup db-setup db-reset run 
+.PHONY: help install dev run test clean db-init db-reset docker-up docker-down
 
-# Help 
-help: 
- @echo "Smart Attendance System - Development Commands" 
- @echo "==============================================" 
- @echo "setup          - Complete setup (install + db-setup)" 
- @echo "install        - Install production dependencies" 
- @echo "dev-install    - Install development dependencies" 
- @echo "run            - Run development server" 
- @echo "test           - Run tests" 
- @echo "db-setup       - Setup database with sample data" 
- @echo "db-reset       - Reset database completely" 
- @echo "docker-up      - Start PostgreSQL and Redis with Docker" 
- @echo "docker-down    - Stop Docker containers" 
- @echo "clean          - Clean temporary files" 
+# Default target
+help:
+	@echo "Smart Attendance System - Available Commands"
+	@echo "==========================================="
+	@echo "make install    - Install production dependencies"
+	@echo "make dev        - Install development dependencies"
+	@echo "make run        - Run development server"
+	@echo "make test       - Run tests"
+	@echo "make db-init    - Initialize database"
+	@echo "make db-reset   - Reset database"
+	@echo "make seed       - Seed database with test data"
+	@echo "make docker-up  - Start Docker containers"
+	@echo "make docker-down - Stop Docker containers"
+	@echo "make clean      - Clean temporary files"
 
-# Setup 
-setup: dev-install docker-up db-setup 
- @echo " Complete setup finished!" 
+# Installation
+install:
+	pip install -r requirements.txt
 
-# Installation 
-install: 
- pip install -r requirements.txt 
+dev:
+	pip install -r requirements.txt
+	pip install pytest pytest-cov black flake8
 
-dev-install: 
- pip install -r requirements-dev.txt 
+# Development
+run:
+	python run.py
 
-# Database 
-db-setup: 
- flask create-db 
- flask init-db 
+test:
+	pytest -v --cov=app tests/
 
-db-reset: 
- flask reset-db 
- flask init-db 
+# Database
+db-init:
+	flask init-db
 
-# Docker 
-docker-up: 
- docker-compose up -d postgres redis 
- @echo " Waiting for PostgreSQL to be ready..." 
- @sleep 5 
+db-reset:
+	flask reset-db
 
-docker-down: 
- docker-compose down 
+seed:
+	flask seed-all
 
-# Development 
-run: 
- python run.py 
+# Docker
+docker-up:
+	docker-compose up -d
 
-test: 
- pytest -v --cov=app tests/ 
+docker-down:
+	docker-compose down
 
-# Cleanup 
-clean: 
- find . -type f -name "*.pyc" -delete 
- find . -type d -name "__pycache__" -delete 
- find . -type d -name ".pytest_cache" -delete 
- rm -rf .coverage htmlcov/ 
+docker-logs:
+	docker-compose logs -f
+
+# Cleanup
+clean:
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name "__pycache__" -delete
+	find . -type d -name ".pytest_cache" -delete
+	rm -rf .coverage htmlcov/
+	rm -rf logs/*.log

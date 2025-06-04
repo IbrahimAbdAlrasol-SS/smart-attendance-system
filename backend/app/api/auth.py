@@ -1,4 +1,4 @@
-# backend/app/api/auth.py - Updated version
+# File: backend/app/api/auth.py
 """Authentication API endpoints - Updated for student login."""
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token, create_refresh_token
@@ -7,6 +7,7 @@ from app.models.user import User, UserRole
 from app.models.student import Student
 from app.utils.helpers import success_response, error_response
 from app.services.auth_service import AuthService
+from datetime import datetime
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -94,6 +95,39 @@ def student_login():
         
     except Exception as e:
         return error_response(f"Student login error: {str(e)}", 500)
+
+@auth_bp.route("/register-face", methods=["POST"])
+@jwt_required()
+def register_face():
+    """Register face data for first-time use."""
+    try:
+        data = request.get_json()
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if user.role != UserRole.STUDENT:
+            return error_response("Only students can register face", 403)
+        
+        student = user.student_profile
+        
+        if student.face_registered:
+            return error_response("Face already registered", 400)
+        
+        # Mark face as registered (actual face data stays on device)
+        student.face_registered = True
+        student.face_registered_at = datetime.utcnow()
+        db.session.commit()
+        
+        return success_response(
+            data={
+                "face_registered": True,
+                "registered_at": student.face_registered_at.isoformat()
+            },
+            message="Face registered successfully"
+        )
+        
+    except Exception as e:
+        return error_response(f"Face registration error: {str(e)}", 500)
 
 @auth_bp.route("/verify-face", methods=["POST"])
 @jwt_required()
